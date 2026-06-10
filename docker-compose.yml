@@ -1,0 +1,63 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: learnflow-db
+    environment:
+      POSTGRES_USER: learnflow
+      POSTGRES_PASSWORD: learnflow
+      POSTGRES_DB: learnflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U learnflow -d learnflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: learnflow-backend
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://learnflow:learnflow@postgres:5432/learnflow"
+      # 以下为可选 LLM / 讯飞凭据，未设置则相关功能优雅降级
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+      DASHSCOPE_API_KEY: "${DASHSCOPE_API_KEY:-}"
+      SILICONFLOW_API_KEY: "${SILICONFLOW_API_KEY:-}"
+      XF_SPARK_API_PASSWORD: "${XF_SPARK_API_PASSWORD:-}"
+      XF_TTS_APPID: "${XF_TTS_APPID:-}"
+      XF_TTS_API_KEY: "${XF_TTS_API_KEY:-}"
+      XF_TTS_API_SECRET: "${XF_TTS_API_SECRET:-}"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/data:/app/data  # 持久化 KG / BKT / FSRS / 资源包等 JSON
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: learnflow-frontend
+    environment:
+      NEXT_PUBLIC_API_BASE: "http://localhost:8000"
+      NEXT_PUBLIC_WS_HOST: "localhost:8000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata:

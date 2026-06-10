@@ -1,0 +1,579 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --background: #f5f5f7;
+  --surface: rgba(255, 255, 255, 0.78);
+  --sidebar: rgba(248, 248, 250, 0.9);
+  --foreground: #1d1d1f;
+  --muted: #f2f2f7;
+  --muted-foreground: #6e6e73;
+  --primary: #007aff;
+  --primary-dark: #005ecb;
+  --border: rgba(60, 60, 67, 0.14);
+  --ring: #007aff;
+  --card: rgba(255, 255, 255, 0.84);
+  --card-solid: #ffffff;
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+:root.dark {
+  color-scheme: dark;
+  --background: #0b0b0f;
+  --surface: rgba(24, 24, 30, 0.85);
+  --sidebar: rgba(18, 18, 22, 0.92);
+  --foreground: #f5f5f7;
+  --muted: #1f1f24;
+  --muted-foreground: #a1a1aa;
+  --primary: #0a84ff;
+  --primary-dark: #0066cc;
+  --border: rgba(255, 255, 255, 0.1);
+  --ring: #0a84ff;
+  --card: rgba(28, 28, 33, 0.85);
+  --card-solid: #18181c;
+  --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* ── 暗黑模式全局修正：把硬编码白色背景统一替换 ── */
+:root.dark {
+  /* 纯白背景 → card-solid */
+  --dark-bg: var(--card-solid);
+  /* 透明白色 → card（带透明度） */
+  --dark-bg-alpha: var(--card);
+}
+
+:root.dark .bg-white,
+:root.dark .bg-white\/90,
+:root.dark .bg-white\/88,
+:root.dark .bg-white\/85,
+:root.dark .bg-white\/82,
+:root.dark .bg-white\/80,
+:root.dark .bg-white\/75,
+:root.dark .bg-white\/70,
+:root.dark .bg-white\/55,
+:root.dark .bg-white\/42 {
+  background-color: var(--card) !important;
+}
+
+:root.dark .bg-slate-50,
+:root.dark .bg-gray-50 {
+  background-color: var(--muted) !important;
+}
+
+:root.dark .bg-emerald-50,
+:root.dark .bg-emerald-50\/50 {
+  background-color: rgba(52, 199, 89, 0.1) !important;
+}
+
+:root.dark .bg-red-50 {
+  background-color: rgba(255, 59, 48, 0.1) !important;
+}
+
+:root.dark .bg-cyan-50 {
+  background-color: rgba(0, 122, 255, 0.08) !important;
+}
+
+:root.dark .bg-blue-50\/60 {
+  background-color: rgba(0, 122, 255, 0.06) !important;
+}
+
+:root.dark .bg-amber-100 {
+  background-color: rgba(255, 149, 0, 0.12) !important;
+}
+
+:root.dark .text-slate-900,
+:root.dark .text-slate-800,
+:root.dark .text-slate-700 {
+  color: var(--foreground) !important;
+}
+
+:root.dark .text-slate-500,
+:root.dark .text-slate-600 {
+  color: var(--muted-foreground) !important;
+}
+
+:root.dark .text-slate-400 {
+  color: var(--muted-foreground) !important;
+}
+
+:root.dark .border-slate-200,
+:root.dark .border-slate-100 {
+  border-color: var(--border) !important;
+}
+
+:root.dark .bg-slate-100 {
+  background-color: var(--muted) !important;
+}
+
+:root.dark .bg-black\/10,
+:root.dark .bg-black\/40 {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+:root.dark .shadow-sm {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Mermaid 图表暗黑适配 */
+:root.dark .lf-mermaid svg {
+  color: var(--foreground);
+}
+
+:root.dark .lf-mermaid .node rect,
+:root.dark .lf-mermaid .node circle,
+:root.dark .lf-mermaid .node polygon {
+  fill: var(--card-solid) !important;
+  stroke: var(--border) !important;
+}
+
+:root.dark .lf-mermaid .nodeLabel {
+  color: var(--foreground) !important;
+}
+
+:root.dark .lf-mermaid .edgeLabel {
+  color: var(--muted-foreground) !important;
+}
+
+:root.dark .lf-mermaid line,
+:root.dark .lf-mermaid path {
+  stroke: var(--muted-foreground) !important;
+}
+
+/* 代码块暗黑适配 */
+:root.dark .zhipath-prose pre {
+  background: #1a1a2e !important;
+  color: #e0e0e0 !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 50% -20%, rgba(0, 122, 255, 0.08), transparent 34rem),
+    var(--background);
+  color: var(--foreground);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+textarea,
+input,
+select {
+  font: inherit;
+}
+
+a,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::selection {
+  background: rgba(0, 122, 255, 0.16);
+}
+
+:focus-visible {
+  outline: 2px solid rgba(0, 122, 255, 0.5);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a,
+  button {
+    /* 提速 180→110ms。iOS 感官更利索。 */
+    transition-duration: 110ms;
+    transition-property: background-color, border-color, color, opacity, box-shadow, transform;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  button:active,
+  a:active {
+    transform: scale(0.97);
+    transition-duration: 60ms;
+  }
+}
+
+.lf-page-transition {
+  min-height: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lf-page-transition {
+    animation: lf-page-in 260ms cubic-bezier(0.2, 0, 0, 1);
+  }
+}
+
+.lf-lift {
+  transition:
+    border-color 180ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 180ms cubic-bezier(0.2, 0, 0, 1),
+    transform 180ms cubic-bezier(0.2, 0, 0, 1),
+    background-color 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.lf-agent-edge,
+.lf-agent-edge-active,
+.lf-agent-edge-done,
+.lf-agent-edge-error {
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-width: 1.15;
+}
+
+.lf-agent-edge {
+  stroke: rgba(60, 60, 67, 0.14);
+}
+
+.lf-agent-edge-done {
+  stroke: rgba(52, 199, 89, 0.32);
+}
+
+.lf-agent-edge-active {
+  animation: lf-agent-flow 1.35s linear infinite;
+  stroke: rgba(0, 122, 255, 0.72);
+  stroke-dasharray: 6 7;
+}
+
+.lf-agent-edge-error {
+  stroke: rgba(255, 59, 48, 0.45);
+  stroke-dasharray: 4 6;
+}
+
+.lf-agent-node-running {
+  animation: lf-agent-node-pulse 1.6s ease-in-out infinite;
+  box-shadow: 0 0 0 5px rgba(0, 122, 255, 0.08), 0 12px 28px rgba(0, 122, 255, 0.12);
+}
+
+.lf-loop-flow {
+  animation: lf-loop-flow 2.4s linear infinite;
+  stroke-dasharray: 34 210;
+  vector-effect: non-scaling-stroke;
+}
+
+.lf-loop-core {
+  animation: lf-loop-core 2.2s ease-in-out infinite;
+}
+
+.lf-loop-node-running {
+  animation: lf-loop-node 1.6s ease-in-out infinite;
+  box-shadow: 0 0 0 6px rgba(0, 122, 255, 0.08), 0 18px 38px rgba(0, 122, 255, 0.14);
+}
+
+.lf-message-enter {
+  animation: lf-message-enter 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.lf-resource-sweep {
+  animation: lf-resource-sweep 1.25s cubic-bezier(0.2, 0, 0, 1) infinite;
+}
+
+@media (hover: hover) {
+  .lf-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 38px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.lf-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(60, 60, 67, 0.24) transparent;
+}
+
+.lf-scrollbar::-webkit-scrollbar {
+  height: 7px;
+  width: 7px;
+}
+
+.lf-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lf-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(60, 60, 67, 0.24);
+  border-radius: 999px;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.zhipath-prose > :first-child {
+  margin-top: 0;
+}
+
+.zhipath-prose > :last-child {
+  margin-bottom: 0;
+}
+
+.zhipath-prose p {
+  margin: 0.45rem 0;
+}
+
+.zhipath-prose ul,
+.zhipath-prose ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.zhipath-prose li {
+  margin: 0.2rem 0;
+}
+
+.zhipath-prose code {
+  border-radius: 0.35rem;
+  background: var(--muted);
+  padding: 0.12rem 0.35rem;
+  font-size: 0.9em;
+}
+
+.zhipath-prose pre {
+  margin: 0.8rem 0;
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  background: #0b2530;
+  padding: 0.9rem;
+  color: #e7fbff;
+}
+
+.zhipath-prose pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.lf-thinking-orbit {
+  animation: lf-thinking-orbit 1.8s linear infinite;
+  transform-origin: center;
+}
+
+.lf-thinking-pulse {
+  animation: lf-thinking-pulse 1.45s ease-in-out infinite;
+}
+
+@keyframes lf-thinking-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lf-thinking-pulse {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.94);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes lf-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes lf-agent-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -26;
+  }
+}
+
+@keyframes lf-agent-node-pulse {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.035);
+  }
+}
+
+@keyframes lf-loop-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -244;
+  }
+}
+
+@keyframes lf-loop-core {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes lf-loop-node {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.04);
+  }
+}
+
+@keyframes lf-message-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.992);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes lf-resource-sweep {
+  from {
+    transform: translateX(0) skewX(-18deg);
+  }
+
+  to {
+    transform: translateX(420%) skewX(-18deg);
+  }
+}
+
+/* iOS 风：抽屉背板淡入 + spring 进入 */
+.lf-fade-in {
+  animation: lf-fade-in 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes lf-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 通用 spring 弹性 */
+.lf-spring {
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.3s ease-out;
+}
+
+/* 输入框聚焦微缩放，iOS 触感 */
+.lf-press:active {
+  transform: scale(0.97);
+}
+
+/* ── Pipeline 步骤入场动画 ── */
+
+.lf-pipeline-step {
+  animation: lf-pipeline-step-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes lf-pipeline-step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── 画像维度进度条填充动画 ── */
+
+.lf-dim-fill {
+  animation: lf-dim-fill-in 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes lf-dim-fill-in {
+  from {
+    width: 0 !important;
+  }
+}
+
+/* ── 画像维度脉冲（实时更新时） ── */
+
+.lf-dim-pulse {
+  animation: lf-dim-pulse 1.2s ease-out;
+}
+
+@keyframes lf-dim-pulse {
+  0% {
+    filter: brightness(1);
+  }
+  20% {
+    filter: brightness(1.15);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.lf-dim-row {
+  transition: all 0.3s ease-out;
+}
+
+.lf-dim-pulse .lf-dim-fill {
+  animation: lf-dim-fill-flash 1s ease-out;
+}
+
+@keyframes lf-dim-fill-flash {
+  0% {
+    filter: brightness(1);
+    box-shadow: none;
+  }
+  30% {
+    filter: brightness(1.3);
+    box-shadow: 0 0 8px currentColor;
+  }
+  100% {
+    filter: brightness(1);
+    box-shadow: none;
+  }
+}

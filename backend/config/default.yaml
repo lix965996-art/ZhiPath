@@ -1,0 +1,92 @@
+llm:
+  default_profile: deepseek-chat
+  profiles:
+    # ────── DeepSeek (主用) ──────
+    # 官方真实模型名：deepseek-chat (V3) / deepseek-reasoner (R1)
+    deepseek-chat:
+      provider: deepseek
+      model_name: deepseek-chat
+      temperature: 0
+    deepseek-reasoner:
+      provider: deepseek
+      model_name: deepseek-reasoner
+      temperature: 0
+
+    # ────── 通义千问 (阿里云 DashScope，OpenAI 兼容) ──────
+    qwen-plus:
+      provider: openai
+      model_name: qwen-plus
+      base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api_key_env: DASHSCOPE_API_KEY
+      temperature: 0
+    qwen-max:
+      provider: openai
+      model_name: qwen-max
+      base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api_key_env: DASHSCOPE_API_KEY
+      temperature: 0
+    qwen-turbo:
+      provider: openai
+      model_name: qwen-turbo
+      base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      api_key_env: DASHSCOPE_API_KEY
+      temperature: 0
+
+    # ────── 硅基流动 SiliconFlow (智谱 GLM / Moonshot Kimi / DeepSeek 等统一平台) ──────
+    glm-4-9b:
+      provider: openai
+      model_name: THUDM/glm-4-9b-chat
+      base_url: https://api.siliconflow.cn/v1
+      api_key_env: SILICONFLOW_API_KEY
+      temperature: 0
+    qwen2.5-7b:
+      provider: openai
+      model_name: Qwen/Qwen2.5-7B-Instruct
+      base_url: https://api.siliconflow.cn/v1
+      api_key_env: SILICONFLOW_API_KEY
+      temperature: 0
+    deepseek-v3-sf:
+      provider: openai
+      model_name: deepseek-ai/DeepSeek-V3
+      base_url: https://api.siliconflow.cn/v1
+      api_key_env: SILICONFLOW_API_KEY
+      temperature: 0
+
+    # ────── 科大讯飞星火 (OpenAI 兼容协议；赛题硬性要求接入工具) ──────
+    iflytek-spark-pro:
+      provider: openai
+      model_name: 4.0Ultra
+      base_url: https://spark-api-open.xf-yun.com/v1
+      api_key_env: XF_SPARK_API_PASSWORD
+      temperature: 0
+    iflytek-spark-lite:
+      provider: openai
+      model_name: lite
+      base_url: https://spark-api-open.xf-yun.com/v1
+      api_key_env: XF_SPARK_API_PASSWORD
+      temperature: 0
+
+# 科大讯飞 TTS（讲义音频化），凭据通过 XF_TTS_APPID/XF_TTS_API_KEY/XF_TTS_API_SECRET
+iflytek_tts:
+  voice: xiaoyan
+  enabled_by_default: true
+
+embedding:
+  provider: huggingface
+  model_name: sentence-transformers/all-mpnet-base-v2
+
+search:
+  provider: duckduckgo
+  max_results: 5
+
+vectorstore:
+  type: pgvector
+  collection_name: zhipath
+
+rag:
+  chunk_size: 1000
+  num_retrieval_results: 5
+
+server:
+  host: 0.0.0.0
+  port: 8000

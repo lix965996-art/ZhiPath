@@ -1,0 +1,5 @@
+[project]
+name = "zhipath"
+version = "0.1.0"
+description = "基于大模型的个性化资源生成与学习多智能体系统"
+requires-python = ">=3.12"
