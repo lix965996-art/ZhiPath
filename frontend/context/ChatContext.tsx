@@ -22,6 +22,7 @@ import {
 } from "@/lib/api";
 import { ZhiPathWS } from "@/lib/ws";
 import { showError, showInfo } from "@/components/ui/Toast";
+import { updateCredentialHealth } from "@/lib/credentials";
 
 interface Message {
   role: "user" | "assistant";
@@ -155,20 +156,29 @@ const initialState: ChatState = {
   guardrail: null,
 };
 
+function trimMessages(messages: Message[]): Message[] {
+  if (messages.length <= MAX_MESSAGES) return messages;
+  // 保留最后 MAX_MESSAGES 条，但确保不从 user 消息中间截断
+  const trimmed = messages.slice(-MAX_MESSAGES);
+  // 如果第一条是 assistant，跳过它（没有对应的 user 问题）
+  if (trimmed[0]?.role === "assistant") return trimmed.slice(1);
+  return trimmed;
+}
+
 function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "ADD_USER_MSG":
       return {
         ...state,
-        messages: [
+        messages: trimMessages([
           ...state.messages,
           { role: "user", content: action.content, timestamp: Date.now() },
-        ],
+        ]),
       };
     case "ADD_ASSISTANT_MSG":
       return {
         ...state,
-        messages: [
+        messages: trimMessages([
           ...state.messages,
           {
             role: "assistant",
@@ -177,7 +187,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
             thinking: action.thinking,
             result: action.result,
           },
-        ],
+        ]),
       };
     case "STREAM_START":
       return {
@@ -209,7 +219,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         isStreaming: false,
-        messages: [
+        messages: trimMessages([
           ...state.messages,
           {
             role: "assistant",
@@ -220,7 +230,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
               : undefined,
             result: state.streamingResult || undefined,
           },
-        ],
+        ]),
         streamingContent: "",
         streamingThinking: [],
         streamingResult: "",
@@ -230,7 +240,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         isStreaming: false,
-        messages: [
+        messages: trimMessages([
           ...state.messages,
           ...(state.streamingContent
             ? [
@@ -244,7 +254,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
                 },
               ]
             : []),
-        ],
+        ]),
         streamingContent: "",
         streamingThinking: [],
         streamingResult: "",
@@ -392,6 +402,7 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | null>(null);
 const STREAM_TIMEOUT_MS = 120_000;
+const MAX_MESSAGES = 200;  // 防止长时间对话导致内存泄漏
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(chatReducer, initialState);
@@ -568,6 +579,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const msg = typeof data.content === "string" ? data.content : "WebSocket 连接错误";
       dispatch({ type: "SET_ERROR", error: msg });
       showError(msg);
+    });
+
+    ws.on("credential_health", (data) => {
+      const source = typeof data.source === "string" ? data.source : "";
+      const status = typeof data.status === "string" ? data.status : "unknown";
+      const errorCode = typeof data.error_code === "number" ? data.error_code : undefined;
+      const message = typeof data.message === "string" ? data.message : undefined;
+      if (source) {
+        updateCredentialHealth(source, status as any, errorCode, message);
+      }
     });
 
     ws.connect();

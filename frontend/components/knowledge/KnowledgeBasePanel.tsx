@@ -2,366 +2,568 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Database,
+  ArrowRight,
+  BookOpen,
+  FileText,
   Loader2,
+  MessageCircle,
+  Route,
   Search,
   Sparkles,
-  Wand2,
 } from "lucide-react";
 import {
+  getLearningHistory,
+  getMastery,
   getSemanticMap,
-  listKnowledgeDocuments,
-  projectQuery,
+  listSessions,
   searchKnowledge,
-  type KnowledgeDocumentSummary,
   type KnowledgeSearchResult,
-  type QueryProjection,
+  type LearningHistory,
+  type MasterySnapshot,
   type SemanticMap,
+  type SessionSummary,
 } from "@/lib/api";
-import { KnowledgeNebula } from "./KnowledgeNebula";
+import {
+  buildStarmap,
+  matchKCs,
+  SUBJECTS,
+  type StarmapModel,
+  type StarNode,
+  type SubjectKey,
+} from "./starmap-data";
 
-/**
- * 知识库 · 星云可视化版
- *
- * 主视觉 = SVG 力导向知识星云 (真 embedding 相似度边).
- * 搜索时, 命中的文档节点高亮 + 涟漪, 未命中节点褪色, 同时右侧弹搜索结果。
- */
+const SUBJECT_META: Record<SubjectKey, { label: string; short: string; color: string }> = {
+  ds: { label: "数据结构", short: "DS", color: "#007AFF" },
+  co: { label: "计算机组成原理", short: "CO", color: "#5856D6" },
+  os: { label: "操作系统", short: "OS", color: "#FF9500" },
+  cn: { label: "计算机网络", short: "CN", color: "#34C759" },
+};
+
+const NODE_LABEL: Record<string, string> = {
+  ds_linear: "线性表",
+  ds_tree: "树与二叉树",
+  ds_avl: "AVL 树",
+  ds_graph: "图",
+  ds_sort: "排序",
+  ds_hash: "查找与哈希",
+  co_data: "数据表示",
+  co_cache: "Cache 映射",
+  co_inst: "指令系统",
+  co_cpu: "CPU 与流水线",
+  co_mem: "主存储器",
+  co_bus: "总线与 I/O",
+  os_proc: "进程管理",
+  os_sched: "处理机调度",
+  os_deadlock: "死锁",
+  os_mem: "内存管理",
+  os_vm: "虚拟存储器",
+  os_file: "文件管理",
+  cn_phys: "物理层",
+  cn_link: "数据链路层",
+  cn_net: "网络层",
+  cn_tcp: "运输层 TCP",
+  cn_app: "应用层",
+};
+
+const ACTION_TEXT = {
+  question: "生成 3 道题",
+  path: "加入学习路径",
+  explain: "解释当前考点",
+};
+
 export function KnowledgeBasePanel() {
-  const [map, setMap] = useState<SemanticMap | null>(null);
-  const [projection, setProjection] = useState<QueryProjection | null>(null);
-  const [documents, setDocuments] = useState<KnowledgeDocumentSummary[]>([]);
-  const [results, setResults] = useState<KnowledgeSearchResult[]>([]);
+  const router = useRouter();
+  const [semanticMap, setSemanticMap] = useState<SemanticMap | null>(null);
+  const [mastery, setMastery] = useState<MasterySnapshot | null>(null);
+  const [learningHistory, setLearningHistory] = useState<LearningHistory | null>(null);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [lastQuery, setLastQuery] = useState("");
+  const [results, setResults] = useState<KnowledgeSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [error, setError] = useState("");
-  const [loadingTopology, setLoadingTopology] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      getSemanticMap().catch(() => null),
-      listKnowledgeDocuments().catch(() => []),
-    ]).then(([m, docs]) => {
+    (async () => {
+      const [map, sessions, history] = await Promise.all([
+        getSemanticMap().catch(() => null),
+        listSessions(5).catch(() => [] as SessionSummary[]),
+        getLearningHistory().catch(() => ({})),
+      ]);
+      let snapshot: MasterySnapshot | null = null;
+      if (sessions.length) {
+        snapshot = await getMastery(sessions[0].id).catch(() => null);
+      }
       if (cancelled) return;
-      setMap(m);
-      setDocuments(docs);
-      setLoadingTopology(false);
-    });
+      setSemanticMap(map);
+      setMastery(snapshot);
+      setLearningHistory(history);
+      setLoading(false);
+    })();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const handleSearch = async (e?: FormEvent) => {
-    e?.preventDefault();
+  const model = useMemo(
+    () => buildStarmap({ semanticMap, mastery, learningHistory }),
+    [semanticMap, mastery, learningHistory],
+  );
+
+  const stats = useMemo(() => {
+    const chunkCount = (semanticMap?.nodes ?? []).reduce((sum, node) => sum + node.chunk_count, 0);
+    const docCount = semanticMap?.nodes.length ?? 0;
+    return {
+      concepts: model.total,
+      chunks: chunkCount || docCount,
+    };
+  }, [model.total, semanticMap]);
+
+  const selectedNode = useMemo(
+    () => model.nodes.find((node) => node.id === selectedId) ?? null,
+    [model.nodes, selectedId],
+  );
+
+  const queryHits = useMemo(
+    () => matchKCs(lastQuery, model.nodes),
+    [lastQuery, model.nodes],
+  );
+
+  const focus = useMemo(() => pickFocusNode(model, selectedNode, queryHits), [model, selectedNode, queryHits]);
+
+  const handleSearch = async (event?: FormEvent) => {
+    event?.preventDefault();
     const q = query.trim();
     if (!q) return;
     setSearching(true);
-    setError("");
-    setProjection(null);
+    setLastQuery(q);
+    setSelectedId(null);
     try {
-      // 并行: 召回结果 (右栏) + 语义投影 (查询星落点)
-      const [r, proj] = await Promise.all([
-        searchKnowledge(q, 5),
-        projectQuery(q, 5).catch(() => null),
-      ]);
+      const r = await searchKnowledge(q, 6);
       setResults(r);
-      setProjection(proj);
-      setLastQuery(q);
     } catch {
-      setError("检索失败, 请稍后重试");
+      setResults([]);
     } finally {
       setSearching(false);
     }
   };
 
-  const clearSearch = () => {
-    setResults([]);
-    setProjection(null);
-    setLastQuery("");
-    setQuery("");
-    inputRef.current?.focus();
-  };
-
-  const stats = useMemo(() => {
-    if (!map) return null;
-    return {
-      docCount: map.nodes.length,
-      edgeCount: map.edges.length,
-      embeddingDim: map.embedding_dim,
-      retrieval: map.retrieval,
-      totalChunks: map.nodes.reduce((s, n) => s + n.chunk_count, 0),
-    };
-  }, [map]);
+  const goChat = (prompt: string) => router.push(`/chat?p=${encodeURIComponent(prompt)}`);
 
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface)] backdrop-blur-2xl">
-        <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between gap-3 px-4">
-          <div className="flex items-center gap-3 min-w-0">
+    <main className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f]">
+      <header className="sticky top-0 z-30 border-b border-black/[0.06] bg-white/95">
+        <div className="mx-auto flex h-[72px] max-w-[1280px] items-center justify-between gap-4 px-5">
+          <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/chat"
-              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] text-[var(--foreground)] hover:bg-[var(--muted)]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/[0.08] bg-white text-[#6e6e73] shadow-sm hover:text-[#1d1d1f]"
+              title="返回工作台"
             >
-              <ArrowLeft size={13} />
-              返回工作台
+              <ArrowLeft size={16} />
             </Link>
-            <div className="hidden h-4 w-px bg-[var(--border)] sm:block" />
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-[14.5px] font-semibold">
-                <Database size={14} className="text-[var(--primary)]" />
-                知识星云
-              </div>
-              <p className="text-[11px] text-[var(--muted-foreground)]">
-                文档语义拓扑 · 实时 RAG 召回追溯
-              </p>
+              <h1 className="truncate text-[19px] font-semibold tracking-tight">课程知识库</h1>
+              <p className="mt-0.5 text-[12px] text-[#86868b]">408 · kb-final 真实来源</p>
             </div>
           </div>
-          {stats ? <StatsBar stats={stats} /> : null}
+          {!loading ? <HeaderStats stats={stats} /> : null}
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1400px] gap-4 px-4 pt-5 pb-12 lg:grid-cols-[minmax(0,1fr)_360px]">
-        {/* 主视觉 · 知识星云 */}
-        <section className="space-y-4">
-          {/* 搜索框 */}
+      <div className="mx-auto grid max-w-[1280px] gap-5 px-5 py-6 lg:grid-cols-[minmax(0,1fr)_330px]">
+        <section className="space-y-5">
           <form
             onSubmit={handleSearch}
-            className="flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 shadow-sm focus-within:border-[var(--primary)]/45 focus-within:shadow-[0_0_0_3px_rgba(124,58,237,0.10)]"
+            className="flex min-h-[56px] items-center gap-3 rounded-[18px] border border-black/[0.08] bg-white px-4 shadow-sm focus-within:border-black/20"
           >
-            <Search size={15} className="shrink-0 text-[var(--muted-foreground)]" />
+            <Search size={18} className="shrink-0 text-[#86868b]" />
             <input
               ref={inputRef}
-              type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="试试: 监督学习和无监督学习有什么区别 · 反向传播是怎么算的"
-              className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-[var(--muted-foreground)]/65"
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="搜一个 408 难点：死锁、Cache 映射、TCP 三次握手"
+              className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-[#a1a1a6]"
             />
-            {results.length > 0 ? (
+            {lastQuery ? (
               <button
                 type="button"
-                onClick={clearSearch}
-                className="rounded-full bg-[var(--muted)] px-2.5 py-1 text-[10.5px] text-[var(--muted-foreground)] hover:bg-[var(--border)]"
+                onClick={() => {
+                  setQuery("");
+                  setLastQuery("");
+                  setResults([]);
+                  inputRef.current?.focus();
+                }}
+                className="hidden rounded-full bg-[#f5f5f7] px-3 py-1.5 text-[12px] text-[#6e6e73] hover:bg-[#ececf0] sm:block"
               >
-                清除
+                清空
               </button>
             ) : null}
             <button
               type="submit"
               disabled={searching || !query.trim()}
-              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#007AFF] to-[#7c3aed] px-3.5 py-1.5 text-[12px] font-medium text-white shadow-sm transition hover:opacity-92 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#1d1d1f] px-4 py-2 text-[13px] font-medium text-white disabled:opacity-45"
             >
-              {searching ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <Sparkles size={12} />
-              )}
-              {searching ? "检索中" : "语义检索"}
+              {searching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+              检索
             </button>
           </form>
 
-          {/* 语义空间星云 */}
-          {loadingTopology ? (
-            <div className="flex h-[560px] items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--card)]">
-              <Loader2 size={20} className="animate-spin text-[var(--muted-foreground)]" />
-            </div>
-          ) : !map || map.nodes.length === 0 ? (
-            <div className="flex h-[400px] items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-6 text-center">
-              <div>
-                <Wand2 size={20} className="mx-auto mb-2 text-[var(--muted-foreground)]" />
-                <p className="text-[12.5px] text-[var(--muted-foreground)]">
-                  知识库还是空的, 添加几篇文档后回来看语义星云。
-                </p>
-              </div>
-            </div>
+          {loading ? (
+            <LoadingCard />
           ) : (
-            <KnowledgeNebula map={map} projection={projection} query={lastQuery} />
+            <>
+              <TodayCard
+                focus={focus}
+                assessed={model.mode === "real"}
+                onContinue={() => router.push(`/resources?topic=${encodeURIComponent(displayNodeLabel(focus))}`)}
+              />
+              <SubjectDirectory
+                model={model}
+                selectedId={selectedId}
+                onSelect={(node) => {
+                  setSelectedId(node.id);
+                  setResults([]);
+                  setLastQuery("");
+                }}
+              />
+              {results.length ? <SearchResults results={results} query={lastQuery} /> : null}
+            </>
           )}
         </section>
 
-        {/* 右栏 · 搜索结果 / 文档清单 */}
-        <aside className="min-w-0 space-y-3">
-          {error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-[12px] text-red-700">
-              {error}
-            </div>
-          ) : null}
-          {results.length > 0 ? (
-            <SearchResultsPanel results={results} query={query} />
-          ) : (
-            <DocumentRoster documents={documents} />
-          )}
-        </aside>
+        {!loading ? (
+          <aside className="space-y-5 lg:sticky lg:top-[96px] lg:self-start">
+            <NextActionCard
+              focus={focus}
+              assessed={model.mode === "real"}
+              weakNodes={pickWeakNodes(model)}
+              onGenerate={() => router.push(`/resources?topic=${encodeURIComponent(displayNodeLabel(focus))}`)}
+              onPath={() => router.push("/path")}
+              onExplain={() => goChat(`请按 408 考研口径解释「${displayNodeLabel(focus)}」，先讲核心概念，再给我一道对应练习。`)}
+              onSelect={setSelectedId}
+            />
+          </aside>
+        ) : null}
       </div>
     </main>
   );
 }
 
-// ===== 顶部统计条 =====
-
-function StatsBar({
-  stats,
-}: {
-  stats: {
-    docCount: number;
-    edgeCount: number;
-    embeddingDim: number;
-    retrieval: string;
-    totalChunks: number;
-  };
-}) {
+function HeaderStats({ stats }: { stats: { concepts: number; chunks: number } }) {
   return (
-    <div className="hidden items-center gap-3 lg:flex">
-      <StatChip label="文档" value={stats.docCount.toString()} />
-      <StatChip label="切片" value={stats.totalChunks.toString()} />
-      <StatChip label="向量边" value={stats.edgeCount.toString()} />
-      <StatChip
-        label="召回"
-        value={
-          stats.retrieval.startsWith("pgvector")
-            ? `pgvector ${stats.embeddingDim}d`
-            : "lexical"
-        }
-      />
+    <div className="hidden items-center gap-2 sm:flex">
+      <StatPill label="考点" value={stats.concepts} />
+      <StatPill label="真实切片" value={stats.chunks} />
     </div>
   );
 }
 
-function StatChip({ label, value }: { label: string; value: string }) {
+function StatPill({ label, value }: { label: string; value: number }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-2.5 py-1 text-[11px]">
-      <span className="text-[var(--muted-foreground)]">{label}</span>
-      <span className="font-mono font-medium text-[var(--foreground)]">{value}</span>
+    <span className="rounded-full border border-black/[0.08] bg-white px-3 py-1.5 text-[12px] text-[#6e6e73] shadow-sm">
+      <span className="font-mono text-[#1d1d1f]">{value}</span> {label}
     </span>
   );
 }
 
-// ===== 搜索结果 (右栏) =====
-
-function SearchResultsPanel({
-  results,
-  query,
+function TodayCard({
+  focus,
+  assessed,
+  onContinue,
 }: {
-  results: KnowledgeSearchResult[];
-  query: string;
+  focus: StarNode;
+  assessed: boolean;
+  onContinue: () => void;
+}) {
+  const meta = SUBJECT_META[focus.subject];
+  const label = displayNodeLabel(focus);
+  const value = assessed ? Math.round(focus.mastery * 100) : coveragePercent(focus);
+  const subtitle = assessed
+    ? `当前掌握 ${Math.round(focus.mastery * 100)}% · ${focus.corpusCount} 片来源`
+    : `${focus.corpusCount} 片来源 · 待测掌握度`;
+
+  return (
+    <section className="rounded-[24px] border border-black/[0.08] bg-white p-6 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-[13px] font-medium text-[#86868b]">今天先补这个</p>
+          <div className="mt-3 flex items-center gap-2">
+            <span
+              className="rounded-full px-2.5 py-1 text-[12px] font-medium"
+              style={{ color: meta.color, background: `${meta.color}14` }}
+            >
+              {meta.label}
+            </span>
+            <span className="text-[12px] text-[#86868b]">{meta.short}</span>
+          </div>
+          <h2 className="mt-4 text-[34px] font-semibold tracking-tight">{label}</h2>
+          <p className="mt-2 text-[14px] text-[#6e6e73]">{subtitle}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onContinue}
+          className="rounded-full bg-[#1d1d1f] px-4 py-2 text-[13px] font-medium text-white hover:opacity-90"
+        >
+          继续学习
+        </button>
+      </div>
+
+      <div className="mt-7 h-3 overflow-hidden rounded-full bg-[#f0f0f3]">
+        <div
+          className="h-full rounded-full bg-[linear-gradient(90deg,#35c8c2_0%,#56d364_38%,#ffb15c_100%)]"
+          style={{ width: `${Math.max(8, Math.min(100, value))}%` }}
+        />
+      </div>
+      <p className="mt-4 text-[14px] text-[#515154]">{focusTip(label)}</p>
+    </section>
+  );
+}
+
+function SubjectDirectory({
+  model,
+  selectedId,
+  onSelect,
+}: {
+  model: StarmapModel;
+  selectedId: string | null;
+  onSelect: (node: StarNode) => void;
+}) {
+  const rows = SUBJECTS.map((subject) => {
+    const nodes = model.nodes
+      .filter((node) => node.subject === subject.key)
+      .sort((a, b) => b.corpusCount - a.corpusCount)
+      .slice(0, 3);
+    const count = model.nodes
+      .filter((node) => node.subject === subject.key)
+      .reduce((sum, node) => sum + node.corpusCount, 0);
+    return { subject: subject.key, nodes, count };
+  });
+
+  return (
+    <section>
+      <div className="mb-3 flex items-end justify-between">
+        <div>
+          <h2 className="text-[20px] font-semibold tracking-tight">408 四科目录</h2>
+          <p className="mt-1 text-[12px] text-[#86868b]">按课程入口组织，只露出当前最值得看的考点。</p>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {rows.map((row) => {
+          const meta = SUBJECT_META[row.subject];
+          return (
+            <section
+              key={row.subject}
+              className="rounded-[18px] border border-black/[0.08] bg-white p-4 shadow-sm"
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex min-w-[150px] items-center gap-3">
+                  <span className="h-9 w-1 rounded-full" style={{ background: meta.color }} />
+                  <div>
+                    <h3 className="text-[15px] font-semibold">{meta.label}</h3>
+                    <p className="mt-0.5 text-[12px] text-[#86868b]">{row.count} 片</p>
+                  </div>
+                </div>
+                <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+                  {row.nodes.map((node) => {
+                    const active = selectedId === node.id;
+                    return (
+                      <button
+                        key={node.id}
+                        type="button"
+                        onClick={() => onSelect(node)}
+                        className={`rounded-full border px-3 py-1.5 text-[12px] transition ${
+                          active
+                            ? "border-[#1d1d1f] bg-[#1d1d1f] text-white"
+                            : "border-black/[0.08] bg-[#f8f8fa] text-[#515154] hover:border-black/20"
+                        }`}
+                      >
+                        {displayNodeLabel(node)}
+                        <span className={active ? "ml-1 text-white/70" : "ml-1 text-[#86868b]"}>
+                          {node.corpusCount}片
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function NextActionCard({
+  focus,
+  assessed,
+  weakNodes,
+  onGenerate,
+  onPath,
+  onExplain,
+  onSelect,
+}: {
+  focus: StarNode;
+  assessed: boolean;
+  weakNodes: StarNode[];
+  onGenerate: () => void;
+  onPath: () => void;
+  onExplain: () => void;
+  onSelect: (id: string) => void;
 }) {
   return (
-    <section className="space-y-2.5">
-      <header className="flex items-center justify-between px-1">
-        <p className="text-[12.5px] font-semibold">
-          召回 {results.length} 条
-          <span className="ml-1.5 text-[11px] font-normal text-[var(--muted-foreground)]">
-            · {truncate(query, 16)}
-          </span>
-        </p>
-        <span className="rounded-full bg-[var(--primary)]/12 px-2 py-0.5 text-[10px] font-medium text-[var(--primary)]">
-          {results[0]?.retrieval_mode || "pgvector"}
-        </span>
-      </header>
-      <ol className="space-y-2">
-        {results.map((r, i) => (
-          <li
-            key={`${r.document_id}-${i}`}
-            className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3"
-          >
-            <header className="flex items-start justify-between gap-2">
-              <p className="line-clamp-1 text-[12.5px] font-semibold">
-                #{i + 1} {r.title}
-              </p>
-              <span
-                className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[10px]"
-                style={{
-                  background: scoreBg(r.score),
-                  color: scoreColor(r.score),
-                }}
-              >
-                {(r.score * 100).toFixed(1)}%
-              </span>
-            </header>
-            <p className="mt-1.5 line-clamp-4 text-[11.5px] leading-5 text-[var(--muted-foreground)]">
-              {highlightQuery(r.content, query)}
-            </p>
-            {r.tags?.length ? (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {r.tags.slice(0, 3).map((t) => (
-                  <span
-                    key={t}
-                    className="rounded-full bg-[var(--muted)] px-1.5 py-0.5 text-[9.5px] text-[var(--muted-foreground)]"
-                  >
-                    {t}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
+    <section className="rounded-[24px] border border-black/[0.08] bg-white p-5 shadow-sm">
+      <div className="mb-4">
+        <h2 className="text-[20px] font-semibold tracking-tight">下一步</h2>
+        <p className="mt-1 text-[12px] text-[#86868b]">别在知识库里聊天，直接做动作。</p>
+      </div>
+      <div className="space-y-2">
+        <ActionButton icon={<FileText size={15} />} label={ACTION_TEXT.question} onClick={onGenerate} />
+        <ActionButton icon={<Route size={15} />} label={ACTION_TEXT.path} onClick={onPath} />
+        <ActionButton icon={<MessageCircle size={15} />} label={ACTION_TEXT.explain} onClick={onExplain} />
+      </div>
 
-function highlightQuery(content: string, _query: string): string {
-  // 当前用 line-clamp 截断, 不做内联 highlight 避免 dangerouslySetInnerHTML.
-  // 简单截前 240 字
-  return content.length > 240 ? content.slice(0, 240) + "…" : content;
-}
+      <div className="my-5 h-px bg-black/[0.06]" />
 
-function scoreColor(s: number): string {
-  if (s >= 0.7) return "#7c3aed";
-  if (s >= 0.4) return "#0a84ff";
-  return "#64748b";
-}
-
-function scoreBg(s: number): string {
-  if (s >= 0.7) return "rgba(124,58,237,0.12)";
-  if (s >= 0.4) return "rgba(10,132,255,0.12)";
-  return "rgba(148,163,184,0.18)";
-}
-
-// ===== 默认右栏 · 文档清单 =====
-
-function DocumentRoster({ documents }: { documents: KnowledgeDocumentSummary[] }) {
-  return (
-    <section className="space-y-2.5">
-      <header className="flex items-center justify-between px-1">
-        <p className="text-[12.5px] font-semibold">知识库 {documents.length} 份文档</p>
-        <span className="text-[10.5px] text-[var(--muted-foreground)]">点节点查看</span>
-      </header>
-      {documents.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-4 text-[12px] text-[var(--muted-foreground)]">
-          尚无文档。
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-[13px] font-semibold">{assessed ? "薄弱 TOP 3" : "高频 TOP 3"}</p>
+          <span className="text-[11px] text-[#86868b]">{displayNodeLabel(focus)}</span>
         </div>
-      ) : (
-        <ol className="max-h-[560px] overflow-y-auto space-y-1.5 pr-1">
-          {documents.map((d) => (
-            <li
-              key={d.id}
-              className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2"
+        <div className="space-y-3">
+          {weakNodes.map((node) => (
+            <button
+              key={node.id}
+              type="button"
+              onClick={() => onSelect(node.id)}
+              className="block w-full text-left"
             >
-              <p className="line-clamp-1 text-[12px] font-medium">{d.title}</p>
-              <div className="mt-0.5 flex items-center gap-2 text-[10.5px] text-[var(--muted-foreground)]">
-                <span className="font-mono">{d.chunk_count} 切片</span>
-                {d.tags?.length ? (
-                  <>
-                    <span>·</span>
-                    <span className="line-clamp-1">{d.tags.slice(0, 2).join(" / ")}</span>
-                  </>
-                ) : null}
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <span className="truncate text-[13px] text-[#1d1d1f]">{displayNodeLabel(node)}</span>
+                <span className="font-mono text-[12px] text-[#ff5f7e]">
+                  {assessed ? `${Math.round(node.mastery * 100)}%` : `${node.corpusCount}片`}
+                </span>
               </div>
-            </li>
+              <div className="h-1.5 overflow-hidden rounded-full bg-[#f0f0f3]">
+                <div
+                  className="h-full rounded-full bg-[#ff5f7e]"
+                  style={{ width: `${assessed ? Math.max(4, Math.round(node.mastery * 100)) : Math.min(100, Math.max(8, node.corpusCount * 5))}%` }}
+                />
+              </div>
+            </button>
           ))}
-        </ol>
-      )}
+        </div>
+      </div>
+
+      <p className="mt-5 rounded-[14px] bg-[#f5f5f7] px-3 py-2 text-[12px] leading-5 text-[#6e6e73]">
+        动作会进入资源工坊或导师对话。知识库只负责定位和追溯。
+      </p>
     </section>
   );
 }
 
-function truncate(s: string, n: number): string {
-  if (!s) return "";
-  return s.length <= n ? s : s.slice(0, n - 1) + "…";
+function ActionButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-between rounded-[15px] border border-black/[0.08] bg-white px-3.5 py-3 text-left text-[14px] font-medium hover:bg-[#f8f8fa]"
+    >
+      <span className="flex items-center gap-2.5">
+        <span className="text-[#86868b]">{icon}</span>
+        {label}
+      </span>
+      <ArrowRight size={15} className="text-[#86868b]" />
+    </button>
+  );
+}
+
+function SearchResults({ results, query }: { results: KnowledgeSearchResult[]; query: string }) {
+  return (
+    <section className="rounded-[24px] border border-black/[0.08] bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-[18px] font-semibold tracking-tight">检索结果</h2>
+          <p className="mt-1 text-[12px] text-[#86868b]">{query} · 命中 {results.length} 条来源</p>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {results.map((result, index) => (
+          <article
+            key={`${result.document_id}-${index}`}
+            className="rounded-[16px] border border-black/[0.06] bg-[#fafafa] p-3"
+          >
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <h3 className="truncate text-[13px] font-semibold">
+                #{index + 1} {result.title}
+              </h3>
+              <span className="font-mono text-[11px] text-[#007AFF]">
+                {(result.score * 100).toFixed(1)}%
+              </span>
+            </div>
+            <p className="line-clamp-2 text-[12px] leading-5 text-[#6e6e73]">
+              {result.content}
+            </p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LoadingCard() {
+  return (
+    <div className="flex h-[360px] items-center justify-center rounded-[24px] border border-black/[0.08] bg-white">
+      <Loader2 size={22} className="animate-spin text-[#86868b]" />
+    </div>
+  );
+}
+
+function pickFocusNode(model: StarmapModel, selected: StarNode | null, queryHits: string[]) {
+  if (selected) return selected;
+  const queryHit = model.nodes.find((node) => node.id === queryHits[0]);
+  if (queryHit) return queryHit;
+  const candidates = [...model.nodes];
+  if (model.mode === "real") {
+    return candidates.sort((a, b) => a.mastery - b.mastery)[0] ?? candidates[0];
+  }
+  return candidates.sort((a, b) => b.corpusCount - a.corpusCount)[0] ?? candidates[0];
+}
+
+function pickWeakNodes(model: StarmapModel) {
+  const candidates = [...model.nodes];
+  if (model.mode === "real") {
+    return candidates.sort((a, b) => a.mastery - b.mastery).slice(0, 3);
+  }
+  return candidates.sort((a, b) => b.corpusCount - a.corpusCount).slice(0, 3);
+}
+
+function displayNodeLabel(node: StarNode) {
+  return NODE_LABEL[node.id] || node.label;
+}
+
+function coveragePercent(node: StarNode) {
+  return Math.max(8, Math.min(100, node.corpusCount * 2));
+}
+
+function focusTip(label: string) {
+  if (label.includes("哈希") || label.includes("查找")) return "先弄清哈希冲突，再做查找效率题。";
+  if (label.includes("Cache")) return "先拆地址字段，再判断映射方式和命中过程。";
+  if (label.includes("死锁")) return "先背四个必要条件，再练银行家算法和资源分配图。";
+  if (label.includes("TCP")) return "先画状态变化，再区分三次握手和四次挥手。";
+  return "先抓定义边界，再用一道题验证。";
 }

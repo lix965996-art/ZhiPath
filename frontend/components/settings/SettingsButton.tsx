@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { KeyRound, Settings } from "lucide-react";
 import { CredentialSettingsPanel } from "./CredentialSettingsPanel";
-import { loadCredentials, onCredentialsChanged } from "@/lib/credentials";
+import { loadApiConfigs, onCredentialsChanged } from "@/lib/credentials";
 
 /**
  * 右上角齿轮按钮 + Settings 模态弹窗。
@@ -16,7 +16,7 @@ export function SettingsButton() {
 
   useEffect(() => {
     const recompute = () =>
-      setConfigured(Object.keys(loadCredentials()).length > 0);
+      setConfigured(loadApiConfigs().some((c) => c.apiKey));
     recompute();
     return onCredentialsChanged(recompute);
   }, []);

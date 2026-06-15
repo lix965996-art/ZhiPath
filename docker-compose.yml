@@ -1,17 +1,17 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: learnflow-db
+    container_name: zhipath-db
     environment:
-      POSTGRES_USER: learnflow
-      POSTGRES_PASSWORD: learnflow
-      POSTGRES_DB: learnflow
+      POSTGRES_USER: zhipath
+      POSTGRES_PASSWORD: zhipath
+      POSTGRES_DB: zhipath
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U learnflow -d learnflow"]
+      test: ["CMD-SHELL", "pg_isready -U zhipath -d zhipath"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -20,9 +20,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: learnflow-backend
+    container_name: zhipath-backend
     environment:
-      DATABASE_URL: "postgresql+asyncpg://learnflow:learnflow@postgres:5432/learnflow"
+      DATABASE_URL: "postgresql+asyncpg://zhipath:zhipath@postgres:5432/zhipath"
       # 以下为可选 LLM / 讯飞凭据，未设置则相关功能优雅降级
       DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
       DASHSCOPE_API_KEY: "${DASHSCOPE_API_KEY:-}"
@@ -49,7 +49,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: learnflow-frontend
+    container_name: zhipath-frontend
     environment:
       NEXT_PUBLIC_API_BASE: "http://localhost:8000"
       NEXT_PUBLIC_WS_HOST: "localhost:8000"

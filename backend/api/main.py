@@ -94,7 +94,7 @@ def create_app() -> FastAPI:
     # Register routers
     from api.routers import (
         audio,
-        classroom,
+        auth,
         credentials as creds_router,
         demo,
         exams,
@@ -114,11 +114,12 @@ def create_app() -> FastAPI:
         settings,
         study_session,
         tracing,
+        user_configs,
         ws,
         xapi,
     )
     app.include_router(audio.router)
-    app.include_router(classroom.router)
+    app.include_router(auth.router)
     app.include_router(creds_router.router)
     app.include_router(demo.router)
     app.include_router(exams.router)
@@ -138,6 +139,7 @@ def create_app() -> FastAPI:
     app.include_router(review.router)
     app.include_router(study_session.router)
     app.include_router(tracing.router)
+    app.include_router(user_configs.router)
     app.include_router(xapi.router)
     app.include_router(ws.router)
 

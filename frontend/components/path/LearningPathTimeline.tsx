@@ -498,7 +498,7 @@ function CampSupplies({
           const ready = k.matchTypes.some((t) => generatedTypes.has(t));
           const Icon = k.icon;
           const onClick = ready
-            ? () => router.push(latestPkg ? `/resources?pkg=${latestPkg.id}` : "/resources")
+            ? () => router.push(latestPkg ? `/resources?pkg=${latestPkg.id}&tab=${k.key}` : `/resources?tab=${k.key}`)
             : () => triggerGen(k.label, `请围绕「${stageTitle}」给我生成${k.label}`);
           return (
             <button
@@ -544,9 +544,9 @@ const RESOURCE_KINDS: Array<{
 }> = [
   { key: "lecture", label: "课程文档", icon: FileText, color: "#007AFF", matchTypes: ["audio", "micro_lecture"] },
   { key: "mindmap", label: "思维导图", icon: Network, color: "#a78bfa", matchTypes: ["mindmap"] },
+  { key: "reading", label: "知识卡片", icon: BookOpen, color: "#22d3ee", matchTypes: ["flashcards"] },
   { key: "quiz", label: "章节习题", icon: HelpCircle, color: "#f59e0b", matchTypes: ["quiz", "exam"] },
   { key: "code", label: "代码案例", icon: Code2, color: "#10b981", matchTypes: ["code_lab"] },
-  { key: "reading", label: "知识卡片", icon: BookOpen, color: "#22d3ee", matchTypes: ["flashcards"] },
   { key: "media", label: "可视化图表", icon: PlayCircle, color: "#f43f5e", matchTypes: ["mermaid"] },
 ];
 

@@ -25,6 +25,8 @@ class EventType(str, Enum):
     PROFILE_UPDATE = "profile_update"
     # Auto-Tutor 闭环阶段进度
     LOOP_STEP = "loop_step"
+    # API 配置健康状态（429/认证失败等）
+    CREDENTIAL_HEALTH = "credential_health"
 
 
 @dataclass

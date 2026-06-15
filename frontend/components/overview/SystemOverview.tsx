@@ -60,7 +60,7 @@ export function SystemOverview() {
           listSessions().catch(() => []),
           listKnowledgeDocuments().catch(() => []),
           listResourcePackages().catch(() => []),
-          searchKnowledge("动态规划状态转移", 1).catch(() => []),
+          searchKnowledge("死锁产生的四个必要条件", 1).catch(() => []),
         ]);
       if (cancelled) return;
       setSessions(nextSessions);
@@ -153,7 +153,7 @@ export function SystemOverview() {
       <div className="mx-auto max-w-6xl px-4 py-8">
         <section className="mb-8 grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(380px,1.05fr)]">
           <div className="rounded-[34px] border border-[var(--border)] bg-white/88 p-8 shadow-[var(--shadow-soft)]">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-[rgba(0,122,255,0.08)] px-3 py-1.5 text-[12px] font-medium text-[var(--primary)]">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-[rgba(59,130,246,0.08)] px-3 py-1.5 text-[12px] font-medium text-[var(--primary)]">
             <Sparkles size={14} />
             学习闭环已就绪
           </div>
@@ -189,7 +189,7 @@ export function SystemOverview() {
               href={capability.href}
               className="lf-lift rounded-[28px] border border-[var(--border)] bg-white/86 p-5 shadow-[var(--shadow-soft)]"
             >
-              <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgba(0,122,255,0.1)] text-[var(--primary)]">
+              <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-[rgba(59,130,246,0.1)] text-[var(--primary)]">
                 <capability.icon size={20} />
               </div>
               <div className="text-[15px] font-semibold">{capability.label}</div>

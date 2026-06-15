@@ -12,6 +12,20 @@ logger = logging.getLogger(__name__)
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "profiles"
 
 
+def typeof_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def make_profile_summary(profile: dict[str, Any], cards: list[dict[str, Any]]) -> str:
+    goal = str(profile.get("learning_goal") or "").strip()
+    if cards and cards[0].get("id") != "cold_start":
+        lead = cards[0]
+        return f"当前主信号：{lead.get('title')}。下一轮资源、题目和路径按此优先。"
+    if goal:
+        return f"目标已记录：{goal}。等待更多练习或对话信号。"
+    return "冷启动：等待目标、基础、薄弱点和时间约束。"
+
+
 class LearningProfileService:
     """规则抽取画像并落盘 JSON；topics 等为会话内累积列表，语义上不等于「本轮唯一学科」。"""
 
@@ -21,8 +35,8 @@ class LearningProfileService:
     async def get_profile(self, session_id: str) -> dict[str, Any]:
         profile = self._read_profile(session_id)
         if profile is not None:
-            return profile
-        profile = self._empty_profile(session_id)
+            return self._normalize_profile(profile)
+        profile = self._normalize_profile(self._empty_profile(session_id))
         self._write_profile(session_id, profile)
         return profile
 
@@ -158,8 +172,17 @@ class LearningProfileService:
         profile["evidence_index"] = evidence_index
         # 维度覆盖率（用于雷达/进度展示，"对话式画像不少于 6 维度"指标）
         profile["dimension_coverage"] = self._compute_dimension_coverage(profile)
+        # 证据化画像洞察：用于前端解释"画像到底有什么用"。
+        profile["profile_insights"] = self._compute_profile_insights(profile)
 
         await self.save_profile(session_id, profile)
+        return profile
+
+    @classmethod
+    def _normalize_profile(cls, profile: dict[str, Any]) -> dict[str, Any]:
+        """补齐旧画像缺失的派生字段，避免前端只能看到浅层标签。"""
+        profile["dimension_coverage"] = cls._compute_dimension_coverage(profile)
+        profile["profile_insights"] = cls._compute_profile_insights(profile)
         return profile
 
     @staticmethod
@@ -190,6 +213,171 @@ class LearningProfileService:
             "dimensions": dimensions,
         }
 
+    @staticmethod
+    def _compute_profile_insights(profile: dict[str, Any]) -> dict[str, Any]:
+        """把画像标签升级成可解释、可行动的学情判断。
+
+        借鉴 OSINT 工具的证据思路：每个结论都带证据数量、置信度和下一步动作。
+        这里不引入外部隐私数据，只使用本系统内的对话、练习和资源行为信号。
+        """
+
+        evidence_log: list[dict[str, Any]] = list(profile.get("evidence_log") or [])
+        turn_count = int(profile.get("turn_count") or 0)
+
+        def evidence_for(*dimensions: str) -> list[dict[str, Any]]:
+            wanted = set(dimensions)
+            return [e for e in evidence_log if str(e.get("dimension")) in wanted]
+
+        def source_names(items: list[dict[str, Any]]) -> list[str]:
+            names: list[str] = []
+            for item in items:
+                cap = str(item.get("capability") or "chat")
+                label = {
+                    "chat": "对话原话",
+                    "goal": "目标诊断",
+                    "learning": "路径规划",
+                    "resource_gen": "资源生成",
+                    "quiz": "练习反馈",
+                    "agentic": "智能路由",
+                    "auto_tutor": "学习编排",
+                    "explainer": "讲解生成",
+                }.get(cap, cap)
+                if label not in names:
+                    names.append(label)
+            if typeof_number(profile.get("quiz_accuracy")) and "练习反馈" not in names:
+                names.append("练习反馈")
+            return names or ["待补充证据"]
+
+        def confidence(items: list[dict[str, Any]], bonus: float = 0.0) -> float:
+            value = 0.38 + min(0.42, len(items) * 0.11) + min(0.1, turn_count * 0.015) + bonus
+            return round(max(0.18, min(0.96, value)), 2)
+
+        weak_points = [str(x) for x in profile.get("weak_points") or [] if str(x).strip()]
+        topics = [str(x) for x in profile.get("topics") or [] if str(x).strip()]
+        preferences = [str(x) for x in profile.get("preferences") or [] if str(x).strip()]
+        constraints = [str(x) for x in profile.get("constraints") or [] if str(x).strip()]
+        intents = [str(x) for x in profile.get("recent_intents") or [] if str(x).strip()]
+        exam = profile.get("exam_context") or {}
+
+        cards: list[dict[str, Any]] = []
+
+        weak_evidence = evidence_for("weak_points", "exam_weak_subject")
+        weak_target = (
+            weak_points[0]
+            if weak_points
+            else ((exam.get("weak_subjects") or [None])[0] if isinstance(exam.get("weak_subjects"), list) else None)
+        )
+        if weak_target:
+            cards.append({
+                "id": "weakness",
+                "title": f"{weak_target}",
+                "dimension": "薄弱定位",
+                "status": "需要优先补",
+                "confidence": confidence(weak_evidence, 0.08),
+                "evidence_count": len(weak_evidence),
+                "sources": source_names(weak_evidence),
+                "rationale": "多次输入或练习信号指向该考点，适合作为下一轮资源生成入口。",
+                "action": f"生成一组围绕「{weak_target}」的 408 选择题和错因解析",
+                "target": weak_target,
+            })
+
+        mode_evidence = evidence_for("preferences", "recent_intents")
+        mode = preferences[0] if preferences else (intents[0] if intents else "")
+        if mode:
+            cards.append({
+                "id": "mode",
+                "title": mode,
+                "dimension": "学习方式",
+                "status": "用于资源个性化",
+                "confidence": confidence(mode_evidence),
+                "evidence_count": len(mode_evidence),
+                "sources": source_names(mode_evidence),
+                "rationale": "系统会据此决定讲义、题目、代码实操和路径的呈现顺序。",
+                "action": f"后续资源优先采用「{mode}」组织",
+                "target": mode,
+            })
+
+        topic_evidence = evidence_for("topics", "exam_context", "exam_weak_subject")
+        focus = topics[0] if topics else (exam.get("exam_code") or "")
+        if focus:
+            cards.append({
+                "id": "focus",
+                "title": focus,
+                "dimension": "当前焦点",
+                "status": "限定学习范围",
+                "confidence": confidence(topic_evidence),
+                "evidence_count": len(topic_evidence),
+                "sources": source_names(topic_evidence),
+                "rationale": "当前问题、知识库检索和资源生成会优先围绕这个范围展开。",
+                "action": f"把「{focus}」加入今日学习入口",
+                "target": focus,
+            })
+
+        if constraints or exam.get("daily_hours") or exam.get("exam_stage"):
+            constraint_evidence = evidence_for("constraints", "exam_stage", "exam_daily_hours", "exam_date")
+            label = constraints[0] if constraints else (f"{exam.get('exam_stage')}阶段" if exam.get("exam_stage") else f"每日 {exam.get('daily_hours')} 小时")
+            cards.append({
+                "id": "constraint",
+                "title": label,
+                "dimension": "时间约束",
+                "status": "影响路径密度",
+                "confidence": confidence(constraint_evidence),
+                "evidence_count": len(constraint_evidence),
+                "sources": source_names(constraint_evidence),
+                "rationale": "路径规划会根据可用时间控制题量和讲义长度。",
+                "action": "按当前约束压缩为可执行的日计划",
+                "target": label,
+            })
+
+        if typeof_number(profile.get("quiz_accuracy")):
+            accuracy = float(profile.get("quiz_accuracy"))
+            cards.append({
+                "id": "quiz",
+                "title": f"{round(accuracy * 100)}% 正确率",
+                "dimension": "掌握校准",
+                "status": "来自练习反馈",
+                "confidence": round(0.78 if turn_count < 3 else 0.84, 2),
+                "evidence_count": 1 + len(evidence_for("weak_points")),
+                "sources": ["练习反馈"],
+                "rationale": "练习正确率比自我描述更适合作为掌握度校准依据。",
+                "action": "把错题主题回写薄弱点并重排学习路径",
+                "target": "quiz_accuracy",
+            })
+
+        if not cards:
+            cards.append({
+                "id": "cold_start",
+                "title": "画像待建立",
+                "dimension": "冷启动",
+                "status": "需要证据",
+                "confidence": 0.18,
+                "evidence_count": 0,
+                "sources": ["待补充证据"],
+                "rationale": "还没有足够对话或练习数据，系统不能可靠判断薄弱点。",
+                "action": "先说出 408 目标、薄弱科目和每天可学时间",
+                "target": "",
+            })
+
+        evidence_total = len(evidence_log)
+        coverage = profile.get("dimension_coverage") or {}
+        ratio = float(coverage.get("ratio") or 0)
+        avg_conf = sum(float(c.get("confidence", 0)) for c in cards) / len(cards)
+        trust_score = round(min(0.96, max(0.12, avg_conf * 0.65 + ratio * 0.25 + min(evidence_total, 20) / 20 * 0.1)), 2)
+
+        next_actions = [
+            card["action"]
+            for card in cards
+            if card.get("action")
+        ][:4]
+
+        return {
+            "trust_score": trust_score,
+            "evidence_total": evidence_total,
+            "cards": cards[:4],
+            "next_actions": next_actions,
+            "summary": make_profile_summary(profile, cards),
+        }
+
     async def build_context(self, session_id: str, max_chars: int = 2200) -> str:
         profile = await self.get_profile(session_id)
 
@@ -211,7 +399,7 @@ class LearningProfileService:
         ]
 
         # 408 考研上下文 — 命中后让 LLM 切换到"考研伴学"语气：
-        # 用真题口径、给倒计时焦虑兜底、数学薄弱时用类比降难度
+        # 用真题口径、给倒计时焦虑兜底、符号推导薄弱时用类比降难度
         exam = profile.get("exam_context") or {}
         if exam:
             lines.append("\n## 408 考研场景")
@@ -228,7 +416,7 @@ class LearningProfileService:
             if exam.get("exam_date"):
                 lines.append(f"- 考试日期：{exam.get('exam_date')}")
             lines.append(
-                "- 输出要求：题目用 408 真题口径；数学/英语薄弱时优先类比与具象化；"
+                "- 输出要求：题目用 408 真题口径；符号推导薄弱时优先类比与具象化；"
                 "讲解结束附 1 条「下一步建议」对齐当前复习阶段。"
             )
         return "\n".join(lines)[:max_chars]
@@ -287,18 +475,18 @@ class LearningProfileService:
 
     # 种子主题（仅冷启动用，不再硬编码全集）
     _SEED_TOPICS = [
-        "机器学习",
-        "深度学习",
-        "监督学习",
-        "无监督学习",
-        "动态规划",
-        "Python",
-        "算法",
-        "线性代数",
-        "概率统计",
-        "高等数学",
-        "数学",
-        "英语",
+        "408",
+        "数据结构",
+        "计算机组成原理",
+        "操作系统",
+        "计算机网络",
+        "死锁",
+        "进程管理",
+        "Cache 映射方式",
+        "二叉树遍历",
+        "TCP 三次握手",
+        "IP 子网划分",
+        "指令流水线",
     ]
 
     @classmethod
@@ -506,7 +694,7 @@ class LearningProfileService:
     def _infer_level(text: str) -> str:
         if any(word in text for word in ["零基础", "新手", "刚开始", "入门"]):
             return "初学者"
-        if any(word in text for word in ["有基础", "学过", "了解一点", "Python 基础", "Python基础"]):
+        if any(word in text for word in ["有基础", "学过", "了解一点", "408 基础", "408基础"]):
             return "有一定基础"
         if any(word in text for word in ["进阶", "提高", "深入", "竞赛"]):
             return "进阶学习者"

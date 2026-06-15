@@ -56,7 +56,7 @@
 需要先装 Docker Desktop。
 
 ```bash
-cd E:\A3\ZhiPath
+cd LearnFlow
 docker-compose up -d
 ```
 
@@ -77,7 +77,7 @@ docker run -d --name learnflow-db -p 5432:5432 \
 #### 2. 启动后端
 
 ```bash
-cd E:\A3\ZhiPath\backend
+cd LearnFlow\backend
 
 # 第一次需要装依赖
 pip install -r requirements.txt
@@ -94,7 +94,7 @@ ZhiPath API initialized with capabilities: ['chat', 'goal', 'learning', 'resourc
 #### 3. 启动前端（新开一个终端）
 
 ```bash
-cd E:\A3\ZhiPath\frontend
+cd LearnFlow\frontend
 
 # 第一次需要装依赖
 npm install
@@ -481,7 +481,7 @@ docker run -d --name learnflow-db -p 5432:5432 \
 
 **原因**：没配 DeepSeek API key。
 
-**解决**：在项目根目录 `E:\A3\ZhiPath\.env` 写：
+**解决**：在项目根目录 `.env` 写：
 ```
 DEEPSEEK_API_KEY=你的 deepseek 密钥
 ```
@@ -711,7 +711,7 @@ frontend/
 
 ## 附录 A: 环境变量完整清单
 
-在项目根目录 `E:\A3\ZhiPath\.env` 配置（或导入到系统环境）：
+在项目根目录 `.env` 配置（或导入到系统环境）：
 
 ```bash
 # ----- 必配（至少一个 LLM）-----

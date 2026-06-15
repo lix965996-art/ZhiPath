@@ -10,7 +10,6 @@ import {
   MessageSquare,
   Network,
   Radio,
-  Rocket,
   Sparkles,
   Wand2,
   Zap,
@@ -44,7 +43,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   {
     id: "agentic",
     label: "智能路由",
-    prompt: "根据我的画像和掌握度告诉我接下来该学什么",
+    prompt: "根据我的 408 掌握度告诉我接下来该补哪一科",
     capability: "agentic",
     icon: Sparkles,
     accent: "from-violet-500/40 to-violet-700/0",
@@ -52,23 +51,15 @@ const QUICK_ACTIONS: QuickAction[] = [
   {
     id: "resource",
     label: "资源生成",
-    prompt: "为机器学习入门生成一份完整资源包，含讲义+测验+闪卡",
+    prompt: "为 408 计算机网络运输层生成一份完整资源包，含讲义+测验+闪卡",
     capability: "resource_gen",
     icon: Wand2,
     accent: "from-cyan-500/40 to-cyan-700/0",
   },
   {
-    id: "auto",
-    label: "Auto-Tutor",
-    prompt: "我想 2 周入门机器学习，请帮我跑一次完整学习闭环",
-    capability: "auto_tutor",
-    icon: Rocket,
-    accent: "from-emerald-500/40 to-emerald-700/0",
-  },
-  {
     id: "debate",
     label: "辩论",
-    prompt: "刷题和看书谁更适合机器学习入门？让 AI 们辩论",
+    prompt: "408 冲刺阶段刷真题和看讲义哪个更优先？让 AI 们辩论",
     capability: "debate",
     icon: MessageSquare,
     accent: "from-amber-500/40 to-amber-700/0",
@@ -76,7 +67,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   {
     id: "explainer",
     label: "动画讲解",
-    prompt: "用动画讲清楚反向传播怎么工作",
+    prompt: "用动画讲清楚 TCP 三次握手和四次挥手",
     capability: "explainer",
     icon: Brain,
     accent: "from-rose-500/40 to-rose-700/0",
@@ -184,7 +175,7 @@ export function LiveTelemetryHUD({
             />
           </span>
           <span className="text-[12px] font-semibold tracking-wider text-white/85">
-            LEARNFLOW · 实时控制台
+            ZhiPath · 实时控制台
           </span>
         </div>
         <div className="flex items-center gap-2 text-[10px] text-white/55">

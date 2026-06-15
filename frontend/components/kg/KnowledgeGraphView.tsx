@@ -103,7 +103,7 @@ export function KnowledgeGraphView({
   if (!graph.nodes.length) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-xs text-slate-400">
-        尚无知识图谱。发起"资源生成"或"Auto-Tutor"后，KGGenerator 会自动构建。
+        尚无知识图谱。发起"资源生成"后，KGGenerator 会自动构建。
       </div>
     );
   }

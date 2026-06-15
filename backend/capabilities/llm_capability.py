@@ -113,7 +113,7 @@ class PromptedLLMCapability(BaseCapability):
         messages: list[Any],
         stream: StreamBus,
     ) -> None:
-        """Stream LLM chunks with Python 3.10 compatible timeout handling."""
+        """Stream LLM chunks with runtime-compatible timeout handling."""
         async for chunk in llm.astream(messages):
             text = self._chunk_text(chunk.content)
             if text:

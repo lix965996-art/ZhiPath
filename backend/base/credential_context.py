@@ -1,137 +1,169 @@
-"""Per-request 用户凭据上下文。
+"""Per-request 用户 API 配置上下文。
 
-用 contextvars 维护"当前请求"用户提供的 LLM / 讯飞凭据：
-- HTTP 请求由中间件从 X-LF-* header 注入 → 请求结束自动释放
-- WebSocket 由 init 消息注入 → 整轮对话内有效
-- 所有 LLM/TTS 工厂优先读这里，没有再回退环境变量
+简化设计：
+- 前端配置一组 ApiConfig（key + url + model + format + taskTypes）
+- 通过 HTTP header (X-LF-Configs) 或 WebSocket init 消息注入
+- 后端用 contextvars 绑定到当前请求，请求结束自动释放
+- TTS 凭据独立存储
 
-**安全设计**：
-- 凭据**绝不持久化**到磁盘/数据库
+安全设计：
+- 凭据绝不持久化到磁盘/数据库
 - 不写日志，不写 trace attributes
-- contextvars 是 asyncio 任务级别隔离，多用户并发不会串
+- contextvars 是 asyncio 任务级别隔离
 """
 from __future__ import annotations
 
 import contextvars
-import os
-from typing import Mapping
+import json
+import logging
+from dataclasses import dataclass, field
+from typing import Any, Literal, Mapping
 
-# 支持的凭据键名 — 与环境变量保持一致，方便回退
-# 每个 LLM 服务可同时配置三件套：API_KEY (必) + BASE_URL (可选) + MODEL (可选)
-SUPPORTED_KEYS = {
-    # LLM API Keys
-    "DEEPSEEK_API_KEY",
-    "DASHSCOPE_API_KEY",
-    "SILICONFLOW_API_KEY",
-    "XF_SPARK_API_PASSWORD",
-    # LLM Base URL Overrides（用户可在前端覆盖默认端点）
-    "DEEPSEEK_BASE_URL",
-    "DASHSCOPE_BASE_URL",
-    "SILICONFLOW_BASE_URL",
-    "XF_SPARK_BASE_URL",
-    # LLM Model Overrides（用户可在前端覆盖默认模型名）
-    "DEEPSEEK_MODEL",
-    "DASHSCOPE_MODEL",
-    "SILICONFLOW_MODEL",
-    "XF_SPARK_MODEL",
-    # 通用 OpenAI 兼容提供商
-    "OPENAI_COMPAT_API_KEY",
-    "OPENAI_COMPAT_BASE_URL",
-    "OPENAI_COMPAT_MODEL",
-    # 通用 Anthropic 提供商
-    "ANTHROPIC_COMPAT_API_KEY",
-    "ANTHROPIC_COMPAT_BASE_URL",
-    "ANTHROPIC_COMPAT_MODEL",
-    # 讯飞 TTS 三件套
-    "XF_TTS_APPID",
-    "XF_TTS_API_KEY",
-    "XF_TTS_API_SECRET",
-}
-
-# 每个 LLM Profile 对应一组 (api_key_env, base_url_env, model_env)
-# LLMFactory 在 from_profile 时会按 provider/api_key_env 找到对应组，
-# 用户的 BASE_URL/MODEL 优先覆盖 yaml 默认。
-PROFILE_OVERRIDE_GROUP = {
-    "DEEPSEEK_API_KEY": ("DEEPSEEK_BASE_URL", "DEEPSEEK_MODEL"),
-    "DASHSCOPE_API_KEY": ("DASHSCOPE_BASE_URL", "DASHSCOPE_MODEL"),
-    "SILICONFLOW_API_KEY": ("SILICONFLOW_BASE_URL", "SILICONFLOW_MODEL"),
-    "XF_SPARK_API_PASSWORD": ("XF_SPARK_BASE_URL", "XF_SPARK_MODEL"),
-    "OPENAI_COMPAT_API_KEY": ("OPENAI_COMPAT_BASE_URL", "OPENAI_COMPAT_MODEL"),
-    "ANTHROPIC_COMPAT_API_KEY": ("ANTHROPIC_COMPAT_BASE_URL", "ANTHROPIC_COMPAT_MODEL"),
-}
+logger = logging.getLogger(__name__)
 
 
-def get_overrides_for(api_key_env: str) -> tuple[str | None, str | None]:
-    """根据 api_key_env 名查找对应的 base_url 和 model override。
+@dataclass
+class ApiConfig:
+    """单个 LLM API 配置。"""
+    id: str
+    name: str
+    api_key: str
+    base_url: str
+    model: str
+    api_format: Literal["openai", "anthropic"] = "openai"
+    task_types: list[str] = field(default_factory=lambda: [
+        "chat", "structured", "reasoning", "code", "long_form", "mermaid",
+    ])
+    enabled: bool = True
 
-    返回 (base_url_value, model_value) — 来自用户浏览器或 env，没有则返回 (None, None)。
-    """
-    pair = PROFILE_OVERRIDE_GROUP.get(api_key_env)
-    if pair is None:
-        return None, None
-    url_key, model_key = pair
-    return get_credential(url_key), get_credential(model_key)
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ApiConfig:
+        """从字典创建，容忍额外字段。"""
+        return cls(
+            id=data.get("id", ""),
+            name=data.get("name", ""),
+            api_key=data.get("apiKey", data.get("api_key", "")),
+            base_url=data.get("baseUrl", data.get("base_url", "")),
+            model=data.get("model", ""),
+            api_format=data.get("apiFormat", data.get("api_format", "openai")),
+            task_types=data.get("taskTypes", data.get("task_types", [])),
+            enabled=data.get("enabled", True),
+        )
 
-# 当前请求范围内的用户凭据（dict[str, str]）
-_current_credentials: contextvars.ContextVar[dict[str, str] | None] = contextvars.ContextVar(
-    "lf_user_credentials", default=None,
+
+# ── 请求上下文 ──────────────────────────────────────────────────
+
+_current_configs: contextvars.ContextVar[list[ApiConfig] | None] = contextvars.ContextVar(
+    "lf_api_configs", default=None,
+)
+
+_current_tts: contextvars.ContextVar[dict[str, str] | None] = contextvars.ContextVar(
+    "lf_tts_creds", default=None,
 )
 
 
-def set_credentials(credentials: Mapping[str, str] | None):
-    """注入当前作用域的用户凭据。返回 token 用于后续 reset。"""
-    if not credentials:
-        return _current_credentials.set(None)
-    # 只保留白名单 keys，过滤空值
-    cleaned = {
-        k: str(v).strip()
-        for k, v in credentials.items()
-        if k in SUPPORTED_KEYS and str(v or "").strip()
-    }
-    return _current_credentials.set(cleaned or None)
+def set_configs(configs: list[ApiConfig] | None):
+    """注入当前请求的用户 API 配置列表。返回 token 用于 reset。"""
+    return _current_configs.set(configs)
 
 
-def reset_credentials(token) -> None:
-    """对应 set_credentials 的释放。"""
+def reset_configs(token) -> None:
+    """释放 set_configs。"""
     try:
-        _current_credentials.reset(token)
+        _current_configs.reset(token)
     except (LookupError, ValueError):
         pass
 
 
-def get_credential(name: str) -> str | None:
-    """获取一个凭据：优先用户传的，回退 env。"""
-    if name not in SUPPORTED_KEYS:
-        return os.getenv(name)
-    bucket = _current_credentials.get()
-    if bucket and bucket.get(name):
-        return bucket[name]
-    return os.getenv(name)
+def get_configs() -> list[ApiConfig]:
+    """获取当前请求的用户配置列表。"""
+    return _current_configs.get() or []
 
 
-def credential_source(name: str) -> str:
-    """返回某个凭据当前的来源：'browser' / 'env' / 'missing'。"""
-    if name not in SUPPORTED_KEYS:
-        return "missing"
-    bucket = _current_credentials.get()
-    if bucket and bucket.get(name):
-        return "browser"
-    if os.getenv(name):
-        return "env"
-    return "missing"
+def get_config_for_task(task_type: str) -> ApiConfig | None:
+    """根据任务类型查找第一个适用的启用配置。"""
+    for cfg in get_configs():
+        if cfg.enabled and task_type in cfg.task_types and cfg.api_key:
+            return cfg
+    return None
 
+
+def get_any_enabled_config() -> ApiConfig | None:
+    """获取任意一个启用的配置（兜底用）。"""
+    for cfg in get_configs():
+        if cfg.enabled and cfg.api_key:
+            return cfg
+    return None
+
+
+# ── TTS 凭据（独立） ──────────────────────────────────────────
+
+TTS_KEYS = {"XF_TTS_APPID", "XF_TTS_API_KEY", "XF_TTS_API_SECRET"}
+
+
+def set_tts_creds(creds: dict[str, str] | None):
+    return _current_tts.set(creds)
+
+
+def reset_tts_creds(token) -> None:
+    try:
+        _current_tts.reset(token)
+    except (LookupError, ValueError):
+        pass
+
+
+def get_tts_creds() -> dict[str, str]:
+    return _current_tts.get() or {}
+
+
+# ── 兼容旧代码的 credential_scope ──────────────────────────────
 
 class credential_scope:
-    """同步 with-block 用：with credential_scope({...}): ..."""
+    """同步 with-block 用：with credential_scope(configs, tts): ..."""
 
-    def __init__(self, credentials: Mapping[str, str] | None) -> None:
-        self._credentials = credentials
-        self._token = None
+    def __init__(
+        self,
+        configs: list[ApiConfig] | None = None,
+        tts: dict[str, str] | None = None,
+    ) -> None:
+        self._configs = configs
+        self._tts = tts
+        self._cfg_token = None
+        self._tts_token = None
 
     def __enter__(self):
-        self._token = set_credentials(self._credentials)
+        if self._configs is not None:
+            self._cfg_token = set_configs(self._configs)
+        if self._tts is not None:
+            self._tts_token = set_tts_creds(self._tts)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._token is not None:
-            reset_credentials(self._token)
+        if self._cfg_token is not None:
+            reset_configs(self._cfg_token)
+        if self._tts_token is not None:
+            reset_tts_creds(self._tts_token)
+
+
+# ── JSON 解析 helper ──────────────────────────────────────────
+
+def parse_configs_from_json(raw: str) -> list[ApiConfig]:
+    """从 JSON 字符串解析 ApiConfig 列表。"""
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, list):
+            return []
+        return [ApiConfig.from_dict(item) for item in data]
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
+def parse_tts_from_json(raw: str) -> dict[str, str]:
+    """从 JSON 字符串解析 TTS 凭据。"""
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            return {}
+        return {k: str(v).strip() for k, v in data.items() if k in TTS_KEYS and str(v or "").strip()}
+    except (json.JSONDecodeError, TypeError):
+        return {}

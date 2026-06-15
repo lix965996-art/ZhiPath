@@ -6,7 +6,6 @@ import {
   FileText,
   Network,
   Quote,
-  Rocket,
   Timer,
   Zap,
 } from "lucide-react";
@@ -14,7 +13,6 @@ import { apiUrl, type KnowledgeDocumentSummary, type LearningProfile } from "@/l
 import { AgentMessageFeed } from "@/components/agent/AgentMessageFeed";
 import { AgentWorkflowGraph } from "@/components/agent/AgentWorkflowGraph";
 import { GenerationPipeline } from "@/components/agent/GenerationPipeline";
-import { AutoTutorLoopVisual } from "@/components/visual/AutoTutorLoopVisual";
 import { PomodoroTimer } from "@/components/pomodoro/PomodoroTimer";
 import { ProfileEvidencePanel } from "@/components/profile/ProfileEvidencePanel";
 import type { VisibleSlot } from "@/context/RoleContext";
@@ -26,7 +24,7 @@ import type { ChatState } from "@/context/ChatContext";
  * - 不可见的 tab 自动隐藏（按 shouldShow 槽位过滤）
  */
 interface RightTabPanelProps {
-  role: "student" | "teacher" | "showcase";
+  role: "student" | "showcase";
   state: ChatState;
   profile: LearningProfile | null;
   knowledgeDocs: KnowledgeDocumentSummary[] | null;
@@ -38,7 +36,6 @@ type TabKey =
   | "agents"
   | "pipeline"
   | "profile"
-  | "auto_tutor"
   | "sources"
   | "pomodoro"
   | "pdf";
@@ -75,13 +72,6 @@ const ALL_TABS: TabDef[] = [
     hasContent: (s) => Boolean(s.sessionId),
   },
   {
-    key: "auto_tutor",
-    label: "Auto-Tutor 闭环",
-    icon: Rocket,
-    slot: "panel.auto_tutor_loop",
-    hasContent: (s) => s.loopSteps.length > 0,
-  },
-  {
     key: "sources",
     label: "知识引用",
     icon: Quote,
@@ -104,9 +94,8 @@ const ALL_TABS: TabDef[] = [
   },
 ];
 
-const DEFAULT_TAB_BY_ROLE: Record<"student" | "teacher" | "showcase", TabKey> = {
+const DEFAULT_TAB_BY_ROLE: Record<"student" | "showcase", TabKey> = {
   student: "profile",
-  teacher: "pdf",
   showcase: "pipeline",
 };
 
@@ -116,14 +105,10 @@ export function RightTabPanel({
   profile,
   knowledgeDocs,
   shouldShow,
-  hideAutoTutor,
 }: RightTabPanelProps) {
   const visibleTabs = useMemo(
-    () =>
-      ALL_TABS.filter((t) => shouldShow(t.slot)).filter(
-        (t) => !(hideAutoTutor && t.key === "auto_tutor"),
-      ),
-    [shouldShow, hideAutoTutor],
+    () => ALL_TABS.filter((t) => shouldShow(t.slot)),
+    [shouldShow],
   );
 
   const [active, setActive] = useState<TabKey>(() => {
@@ -208,8 +193,6 @@ export function RightTabPanel({
           ) : (
             <EmptyTab text="发送第一条消息后会自动构建画像。" />
           )
-        ) : active === "auto_tutor" ? (
-          <AutoTutorLoopVisual />
         ) : active === "sources" ? (
           state.knowledgeSources.length > 0 ? (
             <SourcesTab state={state} />

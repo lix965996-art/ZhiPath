@@ -11,10 +11,10 @@ interface BrandMarkProps {
 }
 
 const variantClass: Record<BrandMarkVariant, string> = {
-  logo: "bg-white ring-1 ring-[rgba(0,122,255,0.18)]",
+  logo: "bg-white ring-1 ring-[rgba(59,130,246,0.18)]",
   assistant: "bg-[var(--primary)] text-white",
   user: "border border-[var(--border)] bg-white/90 text-[var(--foreground)]",
-  input: "bg-[rgba(0,122,255,0.08)] text-[var(--primary)]",
+  input: "bg-[rgba(59,130,246,0.08)] text-[var(--primary)]",
 };
 
 export function BrandMark({

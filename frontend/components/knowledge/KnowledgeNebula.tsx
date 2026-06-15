@@ -237,7 +237,7 @@ export function KnowledgeNebula({ map, projection, query }: Props) {
                   filter: isHit
                     ? "drop-shadow(0 0 8px rgba(167,139,250,0.65))"
                     : isHover
-                      ? "drop-shadow(0 4px 8px rgba(0,122,255,0.35))"
+                      ? "drop-shadow(0 4px 8px rgba(59,130,246,0.35))"
                       : undefined,
                   transition: "opacity 220ms ease",
                 }}

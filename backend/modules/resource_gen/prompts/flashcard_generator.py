@@ -1,35 +1,19 @@
-flashcard_output_format = """
-{
-    "title": "闪卡集标题",
-    "cards": [
-        {
-            "front": "问题或概念",
-            "back": "答案或解释",
-            "difficulty": "easy|medium|hard"
-        }
-    ]
-}
-""".strip()
+"""Backward-compatible prompt loader for flashcard_generator.
 
-flashcard_generator_system_prompt = f"""
-你是 ZhiPath 智能学习系统中的**闪卡生成**智能体。
-你的任务是根据学习文档创建一组闪卡，帮助学习者记忆关键概念。
+Loads from YAML registry (prompts/registry/resource_gen/flashcard.yaml).
+"""
+from __future__ import annotations
 
-**核心指令**:
-1. **聚焦关键概念**: 每张闪卡应覆盖一个独立的知识点。
-2. **清晰简洁**: front 应是清晰的问题或概念，back 应是简洁但完整的答案。
-3. **难度分级**: 根据概念复杂度标注 difficulty（easy/medium/hard）。
-4. **数量适中**: 根据文档内容生成 5-15 张闪卡。
+import logging
 
-**最终输出格式**:
-{flashcard_output_format}
-""".strip()
+from prompts import get_prompt
 
-flashcard_generator_task_prompt = """
-根据学习文档生成闪卡集。
+logger = logging.getLogger(__name__)
 
-**学习文档**:
-{learning_document}
+_system_tmpl = get_prompt("flashcard_generator", "system")
+_task_tmpl = get_prompt("flashcard_generator", "task")
 
-**主题**: {topic}
-""".strip()
+flashcard_generator_system_prompt: str = _system_tmpl.content if _system_tmpl else ""
+flashcard_generator_task_prompt: str = _task_tmpl.content if _task_tmpl else ""
+
+logger.debug("flashcard_generator prompts loaded from registry v%s", _system_tmpl.version if _system_tmpl else "?")

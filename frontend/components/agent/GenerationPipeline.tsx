@@ -95,7 +95,6 @@ export function GenerationPipeline({
   const steps = useMemo(() => {
     const isResourceGen =
       activeCapability === "resource_gen" ||
-      activeCapability === "auto_tutor" ||
       activeCapability === "agentic";
 
     /* 资源生成模式下，补齐预期但尚未调用的步骤 */
@@ -257,7 +256,7 @@ function StepRow({ step, compact }: { step: PipelineStep; compact: boolean }) {
     <div
       className={`lf-pipeline-step rounded-xl border transition-all duration-300 ${
         step.status === "running"
-          ? "border-[rgba(0,122,255,0.35)] bg-[rgba(0,122,255,0.06)] shadow-[0_0_0_3px_rgba(0,122,255,0.08)]"
+          ? "border-[rgba(59,130,246,0.35)] bg-[rgba(59,130,246,0.06)] shadow-[0_0_0_3px_rgba(59,130,246,0.08)]"
           : step.status === "done"
             ? "border-[rgba(52,199,89,0.25)] bg-[var(--card)]"
             : step.status === "error"
@@ -270,7 +269,7 @@ function StepRow({ step, compact }: { step: PipelineStep; compact: boolean }) {
         <div
           className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
             step.status === "running"
-              ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]"
+              ? "bg-[rgba(59,130,246,0.12)] text-[var(--primary)]"
               : step.status === "done"
                 ? "bg-[rgba(52,199,89,0.12)] text-emerald-600 dark:text-emerald-400"
                 : step.status === "error"

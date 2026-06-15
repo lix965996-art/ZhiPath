@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type Role = "student" | "teacher" | "showcase";
+export type Role = "student" | "showcase";
 
 interface RoleContextValue {
   role: Role;
@@ -26,14 +26,12 @@ export type VisibleSlot =
   | "nav.path"
   | "nav.knowledge"
   | "nav.resources"
-  | "nav.dashboard"
-  | "nav.classroom"
+  | "nav.analytics"
   | "nav.overview"
   // 右侧面板
   | "panel.agent_graph" // 多智能体协作图
   | "panel.agent_feed" // Agent 通信轨迹
   | "panel.profile_evidence" // 画像证据链
-  | "panel.auto_tutor_loop" // Auto-Tutor 闭环
   | "panel.knowledge_sources" // 引用追溯
   | "panel.pomodoro" // 番茄钟
   | "panel.pdf_report" // PDF 周报下载
@@ -45,24 +43,15 @@ export type VisibleSlot =
 const STORAGE_KEY = "zhipath-role-v1";
 
 const SLOTS_BY_ROLE: Record<Role, Set<VisibleSlot>> = {
-  // 学生模式：聚焦学习，藏掉炫技和教师场景
+  // 学生模式：聚焦学习
   student: new Set<VisibleSlot>([
     "nav.profile",
     "nav.path",
+    "nav.analytics",
     "nav.resources",
     "nav.knowledge",
     "panel.profile_evidence",
     "panel.pomodoro",
-    "panel.pdf_report",
-    "chat.guardrail",
-  ]),
-  // 教师模式：聚焦班级与个人学情
-  teacher: new Set<VisibleSlot>([
-    "nav.classroom",
-    "nav.dashboard",
-    "nav.resources",
-    "nav.knowledge",
-    "panel.profile_evidence",
     "panel.pdf_report",
     "chat.guardrail",
   ]),
@@ -72,13 +61,11 @@ const SLOTS_BY_ROLE: Record<Role, Set<VisibleSlot>> = {
     "nav.path",
     "nav.knowledge",
     "nav.resources",
-    "nav.dashboard",
-    "nav.classroom",
+    "nav.analytics",
     "nav.overview",
     "panel.agent_graph",
     "panel.agent_feed",
     "panel.profile_evidence",
-    "panel.auto_tutor_loop",
     "panel.knowledge_sources",
     "panel.pomodoro",
     "panel.pdf_report",
@@ -96,7 +83,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem(STORAGE_KEY) as Role | null;
-    if (saved === "student" || saved === "teacher" || saved === "showcase") {
+    if (saved === "student" || saved === "showcase") {
       setRoleState(saved);
     }
   }, []);

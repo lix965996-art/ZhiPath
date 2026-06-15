@@ -5,7 +5,16 @@ from pathlib import Path
 
 import yaml
 
-from config.schemas import AppConfig, LLMConfig, LLMProfileConfig, EmbeddingConfig
+from config.schemas import (
+    AppConfig,
+    LLMConfig,
+    LLMProfileConfig,
+    EmbeddingConfig,
+    RerankerConfig,
+    SearchConfig,
+    RAGConfig,
+    CodeLabConfig,
+)
 
 _CONFIG_DIR = Path(__file__).parent
 
@@ -39,9 +48,46 @@ def load_config() -> AppConfig:
         model_name=embed_raw.get("model_name", "sentence-transformers/all-mpnet-base-v2"),
     )
 
+    # ── RAG / reranker / search config ──
+    rag_raw = raw.get("rag", {})
+    reranker_raw = rag_raw.get("reranker", raw.get("reranker", {}))
+    search_raw = rag_raw.get("search", raw.get("search", {}))
+
+    reranker = RerankerConfig(
+        enabled=reranker_raw.get("enabled", True),
+        strategy=reranker_raw.get("strategy", "crossencoder"),
+        model_name=reranker_raw.get("model_name", "cross-encoder/ms-marco-MiniLM-L-6-v2"),
+        overfetch_factor=reranker_raw.get("overfetch_factor", 3),
+        max_length=reranker_raw.get("max_length", 512),
+    )
+
+    search = SearchConfig(
+        provider=search_raw.get("provider", "duckduckgo"),
+        max_results=search_raw.get("max_results", 5),
+        api_key_env=search_raw.get("api_key_env"),
+    )
+
+    rag = RAGConfig(
+        chunk_size=rag_raw.get("chunk_size", 1000),
+        num_retrieval_results=rag_raw.get("num_retrieval_results", 5),
+        reranker=reranker,
+        search=search,
+    )
+
+    # ── 代码实操沙箱配置 ──
+    cl_raw = raw.get("code_lab", {})
+    code_lab = CodeLabConfig(
+        compiler_preference=tuple(cl_raw.get("compiler_preference", ("tcc", "gcc", "clang", "cl"))),
+        compiler_path=os.getenv("ZHIPATH_C_COMPILER", cl_raw.get("compiler_path", "")),
+        timeout_seconds=float(cl_raw.get("timeout_seconds", 5.0)),
+        max_output_bytes=int(cl_raw.get("max_output_bytes", 65536)),
+    )
+
     return AppConfig(
         llm=llm,
         embedding=embedding,
+        rag=rag,
+        code_lab=code_lab,
         database_url=os.getenv("DATABASE_URL", "postgresql+asyncpg://zhipath:zhipath@localhost:5432/zhipath"),
     )
 

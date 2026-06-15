@@ -1,246 +1,224 @@
-# ZhiPath · 基于大模型的个性化资源生成与学习多智能体系统
+# ZhiPath
 
-> 2026 中国软件杯 **A3 赛题** 参赛作品
->
-> **多智能体协同 · 多模态资源生成 · 对话式画像 · 闭环学习评估**
+ZhiPath 是一个面向 408 复习与个性化学习的多智能体学习系统。用户用自然语言提出目标或问题后，系统会自动完成学习者画像、知识库检索、学习路径规划、资源生成、测验反馈与复习调度，形成「诊断 - 资源 - 练习 - 反馈 - 重规划」的闭环。
 
----
+![ZhiPath 智能学习工作台](docs/images/chat-agent-trace.png)
 
-## 一、系统概述
+## 核心能力
 
-ZhiPath 是一个面向个性化学习的多智能体协作系统。用户通过自然语言对话，系统自动完成学习者画像构建、技能差距诊断、学习路径规划、多模态学习资源生成、测验评估与反馈闭环。
+| 能力 | 说明 |
+| --- | --- |
+| 智能路由 | 根据用户问题自动选择问答、资源生成、动画讲解、多智能体辩论等能力。 |
+| 学习者画像 | 从对话与测验中抽取目标、当前水平、关注主题、薄弱点、学习偏好、时间约束和最近意图。 |
+| 课程知识库 | 面向 408 的知识切片、关键词检索、向量召回和相似度排序，支持定位薄弱知识点。 |
+| 学习路径 | 把目标诊断、资源生成和反馈结果组织成阶段式学习路线。 |
+| 资源工坊 | 生成讲义、练习题、试卷、闪卡、思维导图、代码实操、案例分析和讲解音频。 |
+| 多智能体协作 | Orchestrator 调度 RAG、画像、路径、资源、反馈等 Agent，前端可视化展示调用链路。 |
+| 掌握度追踪 | 使用 BKT、IRT、FSRS 等学习算法记录知识点掌握度、推荐难度和复习日历。 |
+| 统一设置 | 前端设置页管理 LLM 与 TTS 凭据，避免把真实密钥写入代码仓库。 |
 
-### 核心工作流程
+## 界面预览
 
-```
-用户目标
-  → 目标诊断 (GoalPlanner → SkillMapper → GapAnalyzer)
-  → 多模态资源并行生成 (Quiz / Flashcard / MindMap / CodeLab / TTS)
-  → 试卷封装 + 模拟自评
-  → 薄弱点回写画像
-  → 路径重规划
-  → 闭环报告 → 持续迭代
-```
+### 智能路由与多智能体轨迹
 
----
+![智能路由与多智能体轨迹](docs/images/chat-agent-trace.png)
 
-## 二、系统架构
+### 个性化资源生成
 
-```
-Frontend (Next.js 15 + React 19)
-    │  WebSocket (/api/v1/ws)
-    ▼
-Backend (FastAPI)
-    │
-    ├── Orchestrator + CapabilityRegistry
-    │       ├─ chat          — 通用智能导师
-    │       ├─ goal          — 目标诊断 (3 Agent 串联)
-    │       ├─ learning      — 学习路径规划
-    │       ├─ resource_gen  — 资源生成 (4 Agent 并行 + TTS)
-    │       ├─ auto_tutor    — 7 阶段全闭环多智能体协作
-    │       ├─ debate        — 多智能体辩论
-    │       ├─ explainer     — 动画讲解
-    │       └─ agentic_chat  — 自主决策 Agent
-    │
-    ├── StreamBus (异步事件总线)
-    │       content / thinking / tool_call / agent_message / done / error
-    │
-    ├── Services
-    │       ├─ RAGPipeline (pgvector + 词法兜底)
-    │       ├─ Guardrail (引用追溯 + 安全过滤)
-    │       ├─ LearningProfileService (对话式画像 + 证据链)
-    │       ├─ iFlytekTTS (WebSocket 在线合成)
-    │       ├─ BKT / DKT / IRT 知识追踪与自适应
-    │       ├─ FSRS 间隔重复调度
-    │       └─ MemoryService / SessionStore / ExamStore
-    │
-    └── PostgreSQL + pgvector
-```
+![个性化资源生成](docs/images/resource-package.png)
 
----
+### 学习者画像
 
-## 三、亮点一览
+![学习者画像](docs/images/learner-profile.png)
 
-| 功能 | 说明 |
-|------|------|
-| **Auto-Tutor 一键闭环** | 单条指令跑完「目标诊断 → 资源生成 → 试卷封装 → 自评 → 画像更新 → 路径重规划 → 闭环报告」7 阶段 |
-| **BKT 贝叶斯知识追踪** | Corbett & Anderson (1995) 算法，每个 KC 维护 P(掌握) 概率，答题动态后验更新 |
-| **FSRS-4 间隔重复** | Ye et al. 2023 遗忘曲线调度，错题/闪卡自动入复习队列 |
-| **对话式画像** | 7 维度画像，每条挂证据原话，WebSocket 增量更新 |
-| **8+ 类多模态资源** | 讲义 / 测验 / 闪卡 / 思维导图 / 可打印试卷 / 代码实操 / 讲义音频 / Mermaid 图表 |
-| **知识图谱 + 推荐学习** | LLM 抽取 KG，DAG 存储前后置依赖，BKT 驱动"下一步学什么" |
-| **多智能体辩论** | 正方/反方/裁判三角色 2 轮辩论 (Du et al. ICML 2024) |
-| **防幻觉与引用追溯** | RAG 检索片段编号 + 相似度分 + 低置信度提示 + 输入安全过滤 |
-| **多模型智能路由** | 6 类任务自动选模型，带 fallback 链 (DeepSeek / 通义 / GLM / Kimi / 星火) |
-| **OTel 全链路追踪** | 每个 Agent / LLM / Tool 调用有 span，前端甘特图可视化 |
-| **IRT 自适应难度** | 2PL 模型按学生 ability θ 实时挑题 |
-| **教师班级聚合视图** | 多 session 聚合：班级平均掌握度 + 薄弱 KC + 学生榜单 |
-| **PDF 学习周报** | 一键生成中文 PDF，含画像 + BKT + FSRS + Trace 报告 |
+### 学习路径
 
----
+![学习路径](docs/images/learning-path.png)
 
-## 四、功能对照赛题要求
+### 课程知识库
 
-| 赛题要求 | ZhiPath 实现 |
-|----------|-------------|
-| **对话式画像** (必做, ≥6 维度) | 7 维度: learning_goal / level / topics / weak_points / preferences / constraints / recent_intents，每条挂证据原话 |
-| **多智能体资源生成** (必做, ≥5 种) | 7+ 种: 讲义、测验、闪卡、思维导图、可打印试卷、代码实操、讲义音频、Mermaid 图表 |
-| **学习路径规划** (必做) | PathScheduler 三模式 (create / reflexion / reschedule)；Auto-Tutor 闭环自动重规划 |
-| **智能辅导** (加分) | Chat Tutor + RAG 引用追溯 + 多模态资源即时回推 |
-| **学习效果评估** (加分) | Auto-Tutor 内置自评 Agent；薄弱点自动回写画像驱动重规划 |
+![课程知识库](docs/images/knowledge-base.png)
 
----
+![知识库检索结果](docs/images/knowledge-search.png)
 
-## 五、技术栈
+### 知识图谱与复习日历
 
-| 层 | 技术 |
-|----|------|
-| **前端** | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS |
-| **后端** | Python 3.12+, FastAPI, LangChain, asyncio |
-| **LLM** | DeepSeek · 通义千问 · 智谱 GLM · Moonshot Kimi · 科大讯飞星火 |
-| **TTS** | 科大讯飞超拟人 TTS (WebSocket) |
-| **数据库** | PostgreSQL 17 + pgvector |
-| **嵌入模型** | sentence-transformers / all-mpnet-base-v2 |
-| **通信** | WebSocket 流式传输 |
+![知识图谱](docs/images/knowledge-graph.png)
 
----
+![FSRS 复习日历](docs/images/review-calendar.png)
 
-## 六、项目结构
+### 系统总览与动画讲解
 
-```
-ZhiPath/
-├── backend/                     # 后端 (Python FastAPI)
-│   ├── api/                     #   API 路由层 (REST + WebSocket)
-│   ├── base/                    #   基础设施 (Agent 基类、LLM 工厂、RAG)
-│   ├── capabilities/            #   能力处理器 (意图路由后的执行逻辑)
-│   ├── config/                  #   配置加载 (YAML + 环境变量)
-│   ├── core/                    #   核心模型 (上下文、事件、事件总线)
-│   ├── modules/                 #   功能模块 (智能体 + 提示词 + Schema)
-│   │   ├── chat_tutor/          #     通用 AI 辅导
-│   │   ├── learner_profile/     #     学习者画像
-│   │   ├── learning_path/       #     学习路径规划
-│   │   ├── resource_gen/        #     资源生成 (7+ Agent)
-│   │   └── skill_gap/           #     技能差距分析 (3 Agent)
-│   ├── runtime/                 #   运行时 (编排器、能力注册表)
-│   ├── services/                #   数据服务层
-│   │   ├── mastery/             #     BKT / DKT / IRT 知识追踪
-│   │   ├── srs/                 #     FSRS 间隔重复
-│   │   ├── rag/                 #     RAG 检索 + GraphRAG
-│   │   ├── knowledge_graph/     #     知识图谱
-│   │   ├── profile/             #     学习者画像服务
-│   │   ├── guardrail/           #     防幻觉 + 安全过滤
-│   │   ├── report/              #     周报生成
-│   │   └── xapi/                #     xAPI 兼容 LRS
-│   └── tests/                   #   测试
-├── frontend/                    # 前端 (Next.js)
-│   ├── app/                     #   页面路由
-│   ├── components/              #   组件库
-│   │   ├── chat/                #     聊天界面
-│   │   ├── agent/               #     多智能体工作流可视化
-│   │   ├── visual/              #     3D 轨道 + 仪表盘 + 学习闭环
-│   │   ├── profile/             #     学习者画像展示
-│   │   ├── path/                #     学习路径时间线
-│   │   ├── quiz/                #     测验组件
-│   │   ├── resources/           #     资源包展示
-│   │   └── ...                  #     其他组件
-│   ├── context/                 #   React Context
-│   └── lib/                     #   工具库 (API client / WebSocket)
-└── docs/                        # 文档
+![系统总览](docs/images/system-overview.png)
+
+![动画讲解链路](docs/images/explainer-trace.png)
+
+## 技术架构
+
+```text
+用户浏览器
+  -> Next.js / React / TypeScript / Tailwind 前端
+  -> REST API + WebSocket 流式通信
+  -> FastAPI 后端
+     -> Orchestrator 能力编排
+     -> Chat / Agentic / Resource / Explainer / Debate 等能力模块
+     -> RAGPipeline 知识库召回
+     -> Profile / Path / Quiz / Exam / SRS 等学习服务
+     -> PostgreSQL + pgvector
 ```
 
----
+主要技术：
 
-## 七、快速启动
+- 前端：Next.js 15、React 19、TypeScript、Tailwind CSS、lucide-react、Three.js
+- 后端：Python 3.12+、FastAPI、LangChain、SQLAlchemy、Alembic
+- 数据：PostgreSQL、pgvector、本地 JSON fallback
+- AI 能力：DeepSeek、通义千问、硅基流动、讯飞星火、OpenAI 兼容接口
+- 学习算法：BKT、DKT、IRT、FSRS
+- 输出资源：Markdown、试卷、闪卡、思维导图、Mermaid、代码实操、TTS 音频
 
-### 1. 环境准备
+## 项目结构
 
-- Python 3.12+
-- Node.js 18+
-- PostgreSQL 17 + pgvector 扩展
+```text
+LearnFlow/
+  backend/                 FastAPI 后端
+    api/                   HTTP / WebSocket 路由
+    capabilities/          面向前端的高层能力入口
+    modules/               Agent、Prompt 与资源生成模块
+    services/              数据、画像、RAG、测验、复习等服务
+    runtime/               编排器与能力注册
+    tests/                 后端测试
+  frontend/                Next.js 前端
+    app/                   App Router 页面
+    components/            业务组件与可视化组件
+    context/               会话、角色、认证等状态
+    lib/                   API 与凭据工具
+  docs/images/             README 展示截图
+  docker-compose.yml       数据库、后端、前端一键启动配置
+```
 
-### 2. 启动数据库
+## 本地启动
+
+### 方式一：Docker Compose
+
+适合快速演示。
 
 ```bash
-# 本地 PostgreSQL (确保 pgvector 扩展已安装)
-pg_ctl start -D /path/to/pgdata
+docker compose up --build
 ```
 
-创建数据库并启用 pgvector：
+启动后访问：
 
-```sql
-CREATE DATABASE learnflow;
-\c learnflow
-CREATE EXTENSION vector;
+- 前端：http://localhost:3000
+- 后端：http://localhost:8000
+- API 健康检查：http://localhost:8000/health
+
+### 方式二：手动启动
+
+适合开发调试。
+
+1. 准备环境
+
+```bash
+# Node.js 18+ / 20+ 均可
+node -v
+npm -v
+
+# Python 建议 3.12+
+python --version
 ```
 
-### 3. 启动后端
+2. 配置环境变量
+
+```bash
+copy .env.example .env
+```
+
+编辑 `.env`，至少配置数据库连接。真实 LLM / TTS Key 不建议写入仓库，可以优先在前端「设置」面板中填写。
+
+3. 启动后端
 
 ```bash
 cd backend
 python -m venv .venv
-.venv/Scripts/activate       # Windows
-# source .venv/bin/activate  # Linux/Mac
+.venv\Scripts\activate
 pip install -r requirements.txt
-cp ../.env.example ../.env   # 编辑 .env 填入 API KEY
 python main.py
 ```
 
-后端启动在 http://localhost:8000
-
-### 4. 启动前端
+4. 启动前端
 
 ```bash
-cd frontend
+cd ../frontend
 npm install
 npm run dev
 ```
 
-前端启动在 http://localhost:3000
+5. 打开页面
 
-打开 http://localhost:3000/chat 开始使用。
-
-### 5. （可选）启用讯飞能力
-
-在 `.env` 增加：
-
-```env
-XF_SPARK_API_PASSWORD=你的星火 OpenAI 兼容 SDK key
-XF_TTS_APPID=你的 TTS APPID
-XF_TTS_API_KEY=你的 TTS APIKey
-XF_TTS_API_SECRET=你的 TTS APISecret
+```text
+http://localhost:3000
 ```
 
-未配置时讯飞功能自动降级，主流程不受影响。
+## 环境变量
 
----
+`.env.example` 给出了模板。常用变量如下：
 
-## 八、开源协议声明
+| 变量 | 必填 | 说明 |
+| --- | --- | --- |
+| `DATABASE_URL` | 是 | 后端数据库连接，Docker 默认使用 `postgresql+asyncpg://zhipath:zhipath@postgres:5432/zhipath`。 |
+| `BACKEND_HOST` | 否 | 后端监听地址，默认 `0.0.0.0`。 |
+| `BACKEND_PORT` | 否 | 后端端口，默认 `8000`。 |
+| `FRONTEND_PORT` | 否 | 前端端口，默认 `3000`。 |
+| `DEEPSEEK_API_KEY` | 否 | DeepSeek Key，可通过前端设置页填写。 |
+| `DASHSCOPE_API_KEY` | 否 | 通义千问 Key，可通过前端设置页填写。 |
+| `SILICONFLOW_API_KEY` | 否 | 硅基流动 Key，可通过前端设置页填写。 |
+| `XF_SPARK_API_PASSWORD` | 否 | 讯飞星火 OpenAI 兼容接口凭据。 |
+| `XF_TTS_APPID` / `XF_TTS_API_KEY` / `XF_TTS_API_SECRET` | 否 | 讯飞 TTS 凭据，用于讲义音频化。 |
 
-本作品使用以下开源项目和服务，均遵循其原始协议：
+## 常用页面
 
-| 名称 | 协议 | 用途 |
-|------|------|------|
-| Next.js | MIT | 前端框架 |
-| React | MIT | UI 库 |
-| Tailwind CSS | MIT | 样式系统 |
-| FastAPI | MIT | 后端 Web 框架 |
-| LangChain | MIT | LLM 编排 |
-| pgvector | PostgreSQL License | 向量检索 |
-| sentence-transformers | Apache 2.0 | 嵌入模型 |
-| Pyodide | Mozilla Public License 2.0 | 浏览器 Python 沙箱 |
-| python-docx | MIT | Word 文档生成 |
-| 科大讯飞 星火 LLM | 商业 SDK，遵循官方使用条款 | 多 LLM 协同 |
-| 科大讯飞 超拟人 TTS | 商业 SDK，遵循官方使用条款 | 讲义音频化 |
-| DeepSeek API | 商业 API | 主 LLM |
+| 页面 | 地址 | 用途 |
+| --- | --- | --- |
+| 工作台 | `/chat` | 对话、智能路由、资源生成、多智能体轨迹。 |
+| 学习者画像 | `/profile` | 查看目标、薄弱点、偏好和证据链。 |
+| 学习路径 | `/path` | 查看阶段式学习路线和下一步任务。 |
+| 资源工坊 | `/resources` | 查看生成的讲义、题目、闪卡、代码实操等资源。 |
+| 课程知识库 | `/knowledge` | 搜索课程知识切片、定位薄弱知识点。 |
+| 学习分析 | `/dashboard` | 知识图谱、掌握度热力图和 FSRS 复习日历。 |
+| 系统总览 | `/overview` | 查看系统能力、核心流程和工程结构。 |
 
----
+## 开发与测试
 
-## 九、参考项目
+前端：
 
-- **DeepTutor** — LlamaIndex RAG + 多渠道 AI 导师，参考 RAG 检索设计
-- **EduAgent** — Azure 全栈 + LangGraph，参考多智能体编排
-- **GenMentor** (WWW 2025) — 参考画像驱动的多智能体框架
+```bash
+cd frontend
+npm run lint
+npx tsc --noEmit
+npm run build
+```
 
----
+后端：
 
-> **ZhiPath** — 让每位学习者拥有属于自己的智能导师。
+```bash
+cd backend
+pytest
+```
+
+常见问题：
+
+- 如果前端请求后端失败，检查 `NEXT_PUBLIC_API_BASE`、`NEXT_PUBLIC_WS_HOST` 和后端端口。
+- 如果数据库连接失败，检查 `DATABASE_URL`、PostgreSQL 服务和 pgvector 扩展。
+- 如果模型调用失败，先在前端设置页测试 API Key；没有配置 Key 时，部分能力会降级或无法生成内容。
+- 如果 `next build` 报 `.next/trace` 权限错误，通常是已有 dev server 占用了 `.next`，停止开发服务后再构建。
+
+## 隐私与安全说明
+
+- 不要提交 `.env`、真实数据库文件、日志、缓存、`node_modules`、`.next`、虚拟环境和本地录屏。
+- README 中的截图已使用项目内公开功能截图，未包含 API Key、Token、Cookie 或本机路径。
+- 真实密钥建议在浏览器设置页填写，或通过部署平台的环境变量注入。
+- 代码实操沙箱只适合教学演示；生产环境应使用容器或独立 VM 做更强隔离。
+
+## License
+
+本仓库保留原项目许可文件。若用于课程、比赛或二次开发，请按实际提交要求补充作者、学校、赛题和许可证信息。

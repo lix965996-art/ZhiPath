@@ -18,9 +18,9 @@ export function ExamResourceCard({ exam }: ExamResourceCardProps) {
   }, {});
 
   return (
-    <div className="mb-5 ml-11 max-w-[720px] rounded-[24px] border border-[rgba(0,122,255,0.2)] bg-white/95 p-4 shadow-[var(--shadow-soft)]">
+    <div className="mb-5 ml-11 max-w-[720px] rounded-[24px] border border-[rgba(59,130,246,0.2)] bg-white/95 p-4 shadow-[var(--shadow-soft)]">
       <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[rgba(0,122,255,0.1)] text-[var(--primary)]">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[rgba(59,130,246,0.1)] text-[var(--primary)]">
           <FileText size={20} />
         </div>
         <div className="min-w-0 flex-1">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { BookOpen, CheckCircle2, ChevronRight, HelpCircle, Layers3 } from "lucide-react";
 import type { LearningResourcePackage } from "@/lib/api";
 
 interface MapNode {
@@ -9,135 +10,150 @@ interface MapNode {
   children: string[];
 }
 
-interface PositionedNode extends MapNode {
-  angle: number;
-  depth: number;
-  x: number;
-  y: number;
-}
-
 export function ResourceMindMap({ pkg }: { pkg: LearningResourcePackage }) {
   const nodes = useMemo(() => buildNodes(pkg), [pkg]);
-  const positioned = useMemo(() => positionNodes(nodes), [nodes]);
-  const [selectedId, setSelectedId] = useState(positioned[0]?.id || "");
-  const root = positioned[0];
-  const selected = positioned.find((node) => node.id === selectedId) || root;
+  const [selectedId, setSelectedId] = useState(nodes[1]?.id || nodes[0]?.id || "");
+  const selected = nodes.find((node) => node.id === selectedId) || nodes[1] || nodes[0];
+  const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
+  const relatedLabels = useMemo(
+    () => buildRelatedLabels(selected, nodes, nodeById),
+    [selected, nodes, nodeById],
+  );
 
-  if (!root) return null;
+  useEffect(() => {
+    if (nodes.length && !nodes.some((node) => node.id === selectedId)) {
+      setSelectedId(nodes[1]?.id || nodes[0]?.id || "");
+    }
+  }, [nodes, selectedId]);
+
+  if (!selected) return null;
+
+  const visibleNodes = nodes.filter((node) => node.id !== "root");
 
   return (
-    <section className="rounded-[32px] border border-[var(--border)] bg-white/88 p-5 shadow-[var(--shadow-soft)]">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <section className="rounded-2xl border border-[var(--border)] bg-[var(--card-solid)] shadow-[var(--shadow-soft)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
         <div>
-          <div className="text-[15px] font-semibold">知识结构图</div>
-          <div className="mt-1 text-[12px] text-[var(--muted-foreground)]">
-            把资源包里的讲义、练习和知识点压缩成一张可点选的结构图。
-          </div>
+          <h2 className="text-[18px] font-bold tracking-tight">知识结构</h2>
+          <p className="mt-1 text-[12px] text-[var(--muted-foreground)]">
+            按 408 考点拆成可复习的目录，点一个节点直接看重点。
+          </p>
         </div>
-        <span className="rounded-full bg-[rgba(0,122,255,0.08)] px-3 py-1 text-[11px] font-medium text-[var(--primary)]">
-          {nodes.length} 个节点
+        <span className="rounded-full bg-[var(--muted)] px-3 py-1 text-[12px] font-medium text-[var(--muted-foreground)]">
+          {visibleNodes.length || nodes.length} 个考点
         </span>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-center">
-        <div className="relative min-h-[330px] overflow-hidden rounded-[26px] border border-[var(--border)] bg-[linear-gradient(180deg,rgba(0,122,255,0.055),rgba(255,255,255,0.8))]">
-          <svg viewBox="0 0 640 340" className="h-[330px] w-full">
-            <defs>
-              <linearGradient id="resource-map-link" x1="0" x2="1" y1="0" y2="1">
-                <stop offset="0%" stopColor="rgba(0,122,255,0.42)" />
-                <stop offset="100%" stopColor="rgba(52,199,89,0.28)" />
-              </linearGradient>
-              <filter id="resource-map-glow" x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation="7" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-
-            {positioned.slice(1).map((node) => (
-              <line
-                key={`${root.id}-${node.id}`}
-                x1={root.x}
-                y1={root.y}
-                x2={node.x}
-                y2={node.y}
-                stroke="url(#resource-map-link)"
-                strokeWidth={selectedId === node.id ? 2.8 : 1.5}
-                strokeLinecap="round"
-                className={selectedId === node.id ? "lf-agent-edge-active" : "lf-agent-edge-done"}
-              />
-            ))}
-
-            {positioned.map((node, index) => {
-              const isRoot = index === 0;
-              const isSelected = selectedId === node.id;
+      <div className="grid min-h-[560px] gap-0 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <nav className="border-b border-[var(--border)] p-4 lg:border-b-0 lg:border-r">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[12px] font-semibold text-[var(--muted-foreground)]">考点目录</p>
+            <p className="text-[12px] text-[var(--muted-foreground)]">{pkg.topic || "408"}</p>
+          </div>
+          <div className="max-h-[500px] space-y-1 overflow-auto pr-1">
+            {(visibleNodes.length ? visibleNodes : nodes).map((node, index) => {
+              const active = node.id === selected.id;
               return (
-                <g
+                <button
                   key={node.id}
-                  role="button"
-                  tabIndex={0}
+                  type="button"
                   onClick={() => setSelectedId(node.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      setSelectedId(node.id);
-                    }
-                  }}
-                  className="cursor-pointer outline-none"
+                  className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${
+                    active
+                      ? "bg-[var(--foreground)] text-[var(--background)]"
+                      : "text-[var(--foreground)] hover:bg-[var(--muted)]"
+                  }`}
                 >
-                  <circle
-                    cx={node.x}
-                    cy={node.y}
-                    r={isRoot ? 42 : isSelected ? 32 : 26}
-                    fill={isRoot ? "rgba(0,122,255,0.94)" : "white"}
-                    stroke={isSelected ? "rgba(0,122,255,0.72)" : "rgba(60,60,67,0.14)"}
-                    strokeWidth={isSelected ? 3 : 1}
-                    filter={isSelected || isRoot ? "url(#resource-map-glow)" : undefined}
-                  />
-                  <text
-                    x={node.x}
-                    y={node.y - (isRoot ? 3 : 2)}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill={isRoot ? "white" : "var(--foreground)"}
-                    fontSize={isRoot ? 13 : 11}
-                    fontWeight={isRoot ? 700 : 600}
+                  <span
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold ${
+                      active
+                        ? "bg-[var(--background)]/14 text-[var(--background)]"
+                        : "bg-[var(--muted)] text-[var(--muted-foreground)]"
+                    }`}
                   >
-                    {shorten(node.label, isRoot ? 9 : 7)}
-                  </text>
-                  {!isRoot && (
-                    <text
-                      x={node.x}
-                      y={node.y + 14}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fill="var(--muted-foreground)"
-                      fontSize="9"
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[14px] font-semibold">{node.label}</span>
+                    <span
+                      className={`mt-0.5 block text-[11px] ${
+                        active ? "text-[var(--background)]/70" : "text-[var(--muted-foreground)]"
+                      }`}
                     >
-                      {node.children.length ? `${node.children.length} 子项` : "资源"}
-                    </text>
-                  )}
-                </g>
+                      {node.children.length ? `${node.children.length} 个下级点` : "独立考点"}
+                    </span>
+                  </span>
+                  <ChevronRight size={14} className={active ? "opacity-80" : "opacity-40 group-hover:opacity-70"} />
+                </button>
               );
             })}
-          </svg>
-        </div>
-
-        <div className="rounded-[24px] border border-[var(--border)] bg-white/90 p-4">
-          <div className="text-[13px] font-semibold">{selected?.label || pkg.topic}</div>
-          <div className="mt-2 text-[12px] leading-6 text-[var(--muted-foreground)]">
-            {buildNodeSummary(selected, pkg)}
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {pkg.assets.slice(0, 5).map((asset) => (
-              <span
-                key={`${asset.type}-${asset.label}`}
-                className="rounded-full bg-[var(--muted)] px-2.5 py-1 text-[11px] text-[var(--foreground)]"
-              >
-                {asset.label}
-              </span>
-            ))}
+        </nav>
+
+        <div className="p-5">
+          <div className="mb-5">
+            <p className="text-[12px] font-semibold text-[var(--muted-foreground)]">当前考点</p>
+            <h3 className="mt-2 text-[28px] font-bold tracking-tight">{selected.label}</h3>
+            <p className="mt-3 max-w-3xl text-[15px] leading-8 text-[var(--foreground)]/78">
+              {buildNodeSummary(selected, pkg)}
+            </p>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <StudyCard
+              title="先抓什么"
+              text={buildCoreFocus(selected.label)}
+              icon={<CheckCircle2 size={15} />}
+            />
+            <StudyCard
+              title="408 怎么考"
+              text={buildExamHandle(selected.label)}
+              icon={<HelpCircle size={15} />}
+            />
+            <StudyCard
+              title="下一步"
+              text={buildNextAction(selected.label)}
+              icon={<Layers3 size={15} />}
+            />
+          </div>
+
+          {relatedLabels.length ? (
+            <div className="mt-6">
+              <p className="mb-3 text-[12px] font-semibold text-[var(--muted-foreground)]">关联考点</p>
+              <div className="flex flex-wrap gap-2">
+                {relatedLabels.map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => {
+                      const target = nodes.find((node) => node.label === label);
+                      if (target) setSelectedId(target.id);
+                    }}
+                    className="rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[12px] font-medium text-[var(--foreground)]/82 hover:border-[var(--foreground)]"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-6 border-t border-[var(--border)] pt-5">
+            <p className="mb-3 text-[12px] font-semibold text-[var(--muted-foreground)]">去对应资源继续学</p>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {resourceLinks(pkg).map((asset) => (
+                <div
+                  key={`${asset.type}-${asset.label}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-3"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <BookOpen size={14} className="shrink-0 text-[var(--muted-foreground)]" />
+                    <span className="truncate text-[13px] font-semibold">{asset.label}</span>
+                  </span>
+                  <span className="text-[11px] text-[var(--muted-foreground)]">{asset.hint}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -145,67 +161,139 @@ export function ResourceMindMap({ pkg }: { pkg: LearningResourcePackage }) {
   );
 }
 
+function StudyCard({
+  title,
+  text,
+  icon,
+}: {
+  title: string;
+  text: string;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+      <div className="mb-3 flex items-center gap-2 text-[12px] font-semibold text-[var(--muted-foreground)]">
+        {icon}
+        <span>{title}</span>
+      </div>
+      <p className="text-[14px] leading-7 text-[var(--foreground)]/84">{text}</p>
+    </div>
+  );
+}
+
 function buildNodes(pkg: LearningResourcePackage): MapNode[] {
   const mindmapNodes = pkg.resources.mindmap?.nodes || [];
-  if (mindmapNodes.length > 0) {
-    return mindmapNodes.slice(0, 10).map((node) => ({
-      children: node.children || [],
-      id: node.id,
-      label: node.label,
-    }));
+  const topic = pkg.topic || pkg.title || "408 核心考点";
+  const usedIds = new Set<string>(["root"]);
+  const normalized = mindmapNodes
+    .slice(0, 20)
+    .map((node, index) => {
+      const rawId = String(node.id || `node-${index}`).trim();
+      let id = rawId && rawId !== "root" ? rawId : `node-${index}`;
+      if (usedIds.has(id)) id = `${id}-${index}`;
+      usedIds.add(id);
+      return {
+        id,
+        label: cleanLabel(node.label, `考点 ${index + 1}`),
+        children: (node.children || []).filter(Boolean),
+      };
+    })
+    .filter((node) => node.label.trim().length > 0);
+
+  if (normalized.length > 0) {
+    return [
+      { id: "root", label: topic, children: normalized.slice(0, 12).map((node) => node.id) },
+      ...normalized,
+    ];
   }
 
-  const generated = [
-    { id: "topic", label: pkg.topic || pkg.title, children: pkg.assets.map((asset) => asset.type) },
-    ...pkg.assets.slice(0, 8).map((asset) => ({
-      children: [],
-      id: asset.type,
-      label: asset.label,
-    })),
+  const assets = pkg.assets.slice(0, 10).map((asset, index) => ({
+    id: `${asset.type || "asset"}-${index}`,
+    label: cleanLabel(asset.label || asset.type, `资源 ${index + 1}`),
+    children: [],
+  }));
+  return [
+    { id: "root", label: topic, children: assets.map((asset) => asset.id) },
+    ...assets,
   ];
-  return generated;
 }
 
-function positionNodes(nodes: MapNode[]): PositionedNode[] {
-  if (nodes.length === 0) return [];
+function buildRelatedLabels(selected: MapNode, nodes: MapNode[], nodeById: Map<string, MapNode>) {
+  const direct = selected.children
+    .map((child) => nodeById.get(child)?.label || cleanLabel(child, ""))
+    .filter((label) => label && !isInternalLabel(label));
 
-  const [root, ...children] = nodes;
-  const childCount = Math.max(children.length, 1);
-  const positioned: PositionedNode[] = [
-    { ...root, angle: 0, depth: 0, x: 320, y: 170 },
-  ];
+  if (direct.length) return unique(direct).slice(0, 8);
 
-  children.forEach((node, index) => {
-    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / childCount;
-    const radiusX = childCount <= 4 ? 190 : 222;
-    const radiusY = childCount <= 4 ? 92 : 122;
-    positioned.push({
-      ...node,
-      angle,
-      depth: 1,
-      x: 320 + Math.cos(angle) * radiusX,
-      y: 170 + Math.sin(angle) * radiusY,
-    });
-  });
-
-  return positioned;
+  return nodes
+    .filter((node) => node.id !== "root" && node.id !== selected.id)
+    .map((node) => node.label)
+    .filter((label) => !isInternalLabel(label))
+    .slice(0, 6);
 }
 
-function buildNodeSummary(node: PositionedNode | undefined, pkg: LearningResourcePackage) {
-  if (!node || node.depth === 0) {
-    return pkg.knowledge_evidence.has_context
-      ? "该资源包已结合知识库证据生成，可用于讲义、试卷和复习材料统一展示。"
-      : "该资源包来自当前学习目标和画像，适合作为一次完整学习任务的产物。";
+function buildNodeSummary(node: MapNode, pkg: LearningResourcePackage) {
+  const topic = pkg.topic || pkg.title;
+  if (node.id === "root") {
+    return `${topic} 的总目录。先从薄弱节点进入，再回到讲义、习题或代码实操验证。`;
   }
-
   if (node.children.length > 0) {
-    return `该节点继续连接 ${node.children.length} 个子知识点，可作为后续拆题和补救练习的依据。`;
+    return `${node.label} 下面还有 ${node.children.length} 个下级考点。先确认概念边界，再用题目检查是否能识别条件和适用场景。`;
   }
-
-  return "该节点对应一个可使用的学习资源，可在详情中查看具体内容或导出材料。";
+  return `${node.label} 可以当作一个独立考点处理：先复述定义，再做一道题验证，不会就回到讲义补概念。`;
 }
 
-function shorten(text: string, max: number) {
-  if (text.length <= max) return text;
-  return `${text.slice(0, max)}...`;
+function buildCoreFocus(label: string) {
+  if (/死锁/.test(label)) return "定义、四个必要条件、预防/避免/检测/解除之间的区别。";
+  if (/Cache|cache|映射/.test(label)) return "地址划分、行号/组号/标记位，以及命中后如何判断。";
+  if (/TCP|握手|挥手/.test(label)) return "状态迁移、序号确认号、为什么需要三次或四次。";
+  if (/树|二叉/.test(label)) return "遍历顺序、递归边界、结点关系和存储结构。";
+  return "先把定义、适用条件和常见反例分开，不要只背一句话。";
+}
+
+function buildExamHandle(label: string) {
+  if (/死锁/.test(label)) return "常考资源分配图、银行家算法、安全序列和破坏必要条件。";
+  if (/Cache|cache|映射/.test(label)) return "常考直接映射、全相联、组相联的地址位数与替换过程。";
+  if (/TCP|握手|挥手/.test(label)) return "常考报文段含义、连接建立/释放步骤和异常状态。";
+  if (/树|二叉/.test(label)) return "常考遍历序列互推、线索二叉树、哈夫曼树和树森林转换。";
+  return "408 通常考定义辨析、过程推导和边界条件判断。";
+}
+
+function buildNextAction(label: string) {
+  if (/代码|程序|算法|树|二叉/.test(label)) return "先看讲义，再做一道手写 C 题，把过程落到代码。";
+  return "先看讲义抓概念，再做 2 道小题，最后用闪卡复述。";
+}
+
+function resourceLinks(pkg: LearningResourcePackage) {
+  const labels: Record<string, string> = {
+    audio: "微讲义",
+    micro_lecture: "微讲义",
+    quiz: "练习题",
+    exam: "试卷",
+    flashcards: "记忆卡",
+    code_lab: "代码实操",
+    mermaid: "结构图",
+  };
+  return pkg.assets
+    .filter((asset) => labels[asset.type] || asset.label)
+    .slice(0, 6)
+    .map((asset) => ({
+      type: asset.type,
+      label: labels[asset.type] || asset.label,
+      hint: typeof asset.count === "number" ? `${asset.count}` : "进入",
+    }));
+}
+
+function cleanLabel(value: unknown, fallback: string) {
+  const text = String(value || "").trim();
+  if (!text || isInternalLabel(text)) return fallback;
+  return text;
+}
+
+function isInternalLabel(value: string) {
+  return /^(root|node[-_\w]*|asset-\d+)$/i.test(value.trim());
+}
+
+function unique(values: string[]) {
+  return Array.from(new Set(values));
 }

@@ -25,6 +25,6 @@ async def get_info():
         "instructions": [
             "1. POST /api/v1/demo/seed 触发一键填充",
             "2. 前端 chat 页面可在会话切换中选 'demo_session_xiaoming'",
-            "3. /dashboard、/classroom 等聚合页都会显示已填充的真实数据",
+            "3. /dashboard 学习分析页会显示已填充的真实数据",
         ],
     }

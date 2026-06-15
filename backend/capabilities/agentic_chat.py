@@ -48,11 +48,14 @@ SYSTEM_PROMPT = """你是 ZhiPath 的"智能路由"导师（Agentic Tutor）。
 4. 用户**问"该复习什么"/"今天复习啥"** → call `query_due_cards`
 5. 用户**问"我学过什么"/"接下来学什么"** → call `query_knowledge_graph` + `query_mastery`
 6. 用户**学习目标模糊** → call `route_to_goal`
-7. 用户**要一个完整学习循环** → call `route_to_auto_tutor`
+7. 用户**要一次完整的诊断、资源、测验、复盘流程** → 可在后台 call `route_to_auto_tutor`
 8. 工具结果回来后，**用中文总结给学生**，引用工具结果但不要原样贴 JSON。
 9. 一轮最多调 3 个工具，不要无限套娃。
 
 输出：直接对学生说话，所有工具调用对学生透明（不要解释"我先调用了 XX 工具"）。
+回答顺序必须是：先给结论和核心考点，再讲步骤/例子/易错点，最后才列参考来源。
+不要在开头复述“来源路径、文档名、知识点出自哪里”。
+不要向学生展示 Auto-Tutor 这个名称；它只作为后台编排能力存在。
 """
 
 
@@ -82,7 +85,7 @@ _ROUTE_DESCRIPTIONS = {
     "goal": "走目标诊断 capability：拆解学习目标 + 技能差距分析，适合用户描述模糊的『想学 X』场景",
     "learning": "走学习路径 capability：根据画像生成 5 阶段学习计划",
     "resource_gen": "走资源生成 capability：并行产出讲义+测验+闪卡+思维导图+代码沙箱+Mermaid图+音频",
-    "auto_tutor": "走 Auto-Tutor 闭环：诊断→生成→自评→画像更新→重规划 一站式完整闭环",
+    "auto_tutor": "后台学习编排：诊断→生成→自评→画像更新→重规划",
     "debate": "走多智能体辩论：对『X vs Y 哪种学法更好』类问题，3 角色 2 轮辩论得结论",
 }
 

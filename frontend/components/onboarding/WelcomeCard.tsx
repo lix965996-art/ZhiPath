@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { CheckCircle2, Database, KeyRound, Rocket, Sparkles, X } from "lucide-react";
 import { apiUrl, apiFetch } from "@/lib/api";
-import { loadCredentials, onCredentialsChanged } from "@/lib/credentials";
+import { loadApiConfigs, onCredentialsChanged } from "@/lib/credentials";
 const CredentialSettingsPanel = dynamic(() => import("@/components/settings/CredentialSettingsPanel").then(m => ({ default: m.CredentialSettingsPanel })), { ssr: false, loading: () => null });
 import { showError, showSuccess } from "@/components/ui/Toast";
 import { type Role, useRole } from "@/context/RoleContext";
@@ -12,9 +12,8 @@ import { type Role, useRole } from "@/context/RoleContext";
 const STORAGE_KEY = "zhipath-onboarding-dismissed-v1";
 
 const ROLE_DESC: Record<Role, string> = {
-  student: "👨‍🎓 学生：聚焦学习场景，藏掉炫技面板，界面更专注",
-  teacher: "👩‍🏫 教师：班级管理 + 数据导出，藏掉单人学情",
-  showcase: "✨ 演示：解锁全部面板（智能体通信、Auto-Tutor 闭环等），适合答辩",
+  student: "👨‍🎓 学生：聚焦学习场景，界面更专注",
+  showcase: "演示：解锁全部面板（智能体通信、资源流水线等），适合答辩",
 };
 
 /**
@@ -38,9 +37,9 @@ export function WelcomeCard() {
     if (typeof window === "undefined") return;
     const dismissed = window.localStorage.getItem(STORAGE_KEY);
     if (!dismissed) setOpen(true);
-    setHasCred(Object.keys(loadCredentials()).length > 0);
+    setHasCred(loadApiConfigs().some((c) => c.apiKey));
     return onCredentialsChanged(() => {
-      setHasCred(Object.keys(loadCredentials()).length > 0);
+      setHasCred(loadApiConfigs().some((c) => c.apiKey));
     });
   }, []);
 
@@ -82,7 +81,7 @@ export function WelcomeCard() {
           </button>
 
           <div className="px-7 pt-7 pb-3">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[rgba(0,122,255,0.1)] px-3 py-1 text-xs font-medium text-[var(--primary)]">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[rgba(59,130,246,0.1)] px-3 py-1 text-xs font-medium text-[var(--primary)]">
               <Sparkles size={13} />
               欢迎使用 ZhiPath
             </div>
@@ -90,7 +89,7 @@ export function WelcomeCard() {
               3 步开始你的个性化学习
             </h2>
             <p className="mt-1 text-sm leading-6 text-[var(--muted-foreground)]">
-              30 秒走完三步，主界面所有功能就解锁了。
+              30 秒走完三步，所有功能就解锁了。
             </p>
           </div>
 
@@ -196,14 +195,14 @@ export function WelcomeCard() {
                   选一个角色 — 不同角色界面密度不同，可以随时在右上角切换。
                 </p>
                 <div className="grid gap-2">
-                  {(["student", "teacher", "showcase"] as Role[]).map((r) => (
+                  {(["student", "showcase"] as Role[]).map((r) => (
                     <button
                       key={r}
                       type="button"
                       onClick={() => setRole(r)}
                       className={`flex items-start gap-3 rounded-2xl border p-3 text-left transition ${
                         role === r
-                          ? "border-[var(--primary)] bg-[rgba(0,122,255,0.06)]"
+                          ? "border-[var(--primary)] bg-[rgba(59,130,246,0.06)]"
                           : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--primary)]"
                       }`}
                     >

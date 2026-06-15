@@ -158,32 +158,24 @@ class ExamStore:
         """Prefer the subject the user names in *this* turn (earliest match in prompt).
 
         Historically `_infer_topic` used the *last* entry in `profile["topics"]`, which
-        stays stale when the user switches subject (e.g. 数学卷子 after earlier 英语).
+        stays stale when the user switches subject (e.g. 组原卷子 after earlier 操作系统).
         """
         text = (source_prompt or "").strip()
         if not text:
             return None
         candidates = [
-            "高等数学",
-            "数学分析",
-            "线性代数",
-            "概率统计",
-            "机器学习",
-            "深度学习",
-            "监督学习",
-            "无监督学习",
-            "动态规划",
-            "Python",
-            "算法",
-            "英语",
-            "语文",
-            "数学",
-            "物理",
-            "化学",
-            "生物",
-            "历史",
-            "地理",
-            "政治",
+            "408",
+            "数据结构",
+            "计算机组成原理",
+            "操作系统",
+            "计算机网络",
+            "死锁",
+            "进程管理",
+            "Cache",
+            "二叉树遍历",
+            "TCP",
+            "IP 子网划分",
+            "指令流水线",
         ]
         lower = text.lower()
         best: str | None = None
@@ -211,18 +203,18 @@ class ExamStore:
                     return text[:24]
 
         known_topics = [
-            "动态规划",
-            "机器学习",
-            "深度学习",
-            "监督学习",
-            "无监督学习",
-            "Python",
-            "线性代数",
-            "概率统计",
-            "算法",
-            "数学",
-            "英语",
-            "语文",
+            "408",
+            "数据结构",
+            "计算机组成原理",
+            "操作系统",
+            "计算机网络",
+            "死锁",
+            "进程管理",
+            "Cache",
+            "二叉树遍历",
+            "TCP",
+            "IP 子网划分",
+            "指令流水线",
         ]
         lower = source_prompt.lower()
         for topic in known_topics:
@@ -232,15 +224,17 @@ class ExamStore:
 
     @staticmethod
     def _infer_subject(topic: str) -> str:
-        if topic in {"动态规划", "算法", "Python"}:
-            return "计算机"
-        if topic in {"机器学习", "深度学习", "监督学习", "无监督学习"}:
-            return "人工智能"
-        if topic in {"线性代数", "概率统计", "数学", "高等数学", "数学分析"}:
-            return "数学"
-        if topic in {"英语", "语文", "物理", "化学", "生物", "历史", "地理", "政治"}:
-            return topic
-        return "综合学习"
+        if topic in {"408", "数据结构", "计算机组成原理", "操作系统", "计算机网络"}:
+            return "408 计算机专业基础"
+        if topic in {"死锁", "进程管理"}:
+            return "操作系统"
+        if topic in {"Cache", "指令流水线"}:
+            return "计算机组成原理"
+        if topic in {"二叉树遍历"}:
+            return "数据结构"
+        if topic in {"TCP", "IP 子网划分"}:
+            return "计算机网络"
+        return "408 计算机专业基础"
 
     @staticmethod
     def _infer_knowledge_point(question: str) -> str:

@@ -1,40 +1,19 @@
-skill_requirements_output_format = """
-{
-    "skill_requirements": [
-        {
-            "name": "技能名称 1",
-            "required_level": "beginner|intermediate|advanced"
-        },
-        {
-            "name": "技能名称 2",
-            "required_level": "beginner|intermediate|advanced"
-        }
-    ]
-}
-""".strip()
+"""Backward-compatible prompt loader for skill_requirement_mapper.
 
-skill_requirement_mapper_system_prompt = f"""
-你是 ZhiPath 智能学习系统中的**技能映射**智能体。
-你的唯一任务是分析学习者的目标，并将其映射为实现该目标所需的核心技能列表。
+Loads from YAML registry (prompts/registry/skill_gap/skill_requirement_mapper.yaml).
+"""
+from __future__ import annotations
 
-**核心指令**:
-1. **聚焦目标**: 你的分析必须严格围绕提供的"学习目标"。
-2. **精简**: 只识别最关键的技能。技能总数**不得超过 10 个**。少即是多。
-3. **精确**: 技能应是具体、可操作的能力，而非宽泛的主题。
-4. **遵循等级**: `required_level` 必须是 "beginner"、"intermediate" 或 "advanced" 之一。
+import logging
 
-**最终输出格式**:
-你的最终输出必须是匹配以下结构的有效 JSON 对象。
-不要在 JSON 输出周围包含任何其他文本或 markdown 标签（例如 ```json）。
+from prompts import get_prompt
 
-{skill_requirements_output_format}
+logger = logging.getLogger(__name__)
 
-必须严格遵循上述格式。
-""".strip()
+_system_tmpl = get_prompt("skill_requirement_mapper", "system")
+_task_tmpl = get_prompt("skill_requirement_mapper", "task")
 
-skill_requirement_mapper_task_prompt = """
-请分析学习者的目标并识别实现该目标所需的核心技能。
+skill_requirement_mapper_system_prompt: str = _system_tmpl.content if _system_tmpl else ""
+skill_requirement_mapper_task_prompt: str = _task_tmpl.content if _task_tmpl else ""
 
-**学习者目标**:
-{learning_goal}
-""".strip()
+logger.debug("skill_requirement_mapper prompts loaded from registry v%s", _system_tmpl.version if _system_tmpl else "?")

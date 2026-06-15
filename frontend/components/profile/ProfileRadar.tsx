@@ -22,7 +22,7 @@ export function ProfileRadar({ profile }: { profile: LearningProfile }) {
             展示画像信号强度，不作为考试分数。
           </div>
         </div>
-        <span className="rounded-full bg-[rgba(0,122,255,0.08)] px-2.5 py-1 text-[11px] font-medium text-[var(--primary)]">
+        <span className="rounded-full bg-[rgba(59,130,246,0.08)] px-2.5 py-1 text-[11px] font-medium text-[var(--primary)]">
           {Math.round(axes.reduce((sum, axis) => sum + axis.value, 0) / axes.length)}%
         </span>
       </div>
@@ -64,8 +64,8 @@ export function ProfileRadar({ profile }: { profile: LearningProfile }) {
           })}
           <polygon
             points={polygon}
-            fill="rgba(0,122,255,0.16)"
-            stroke="rgba(0,122,255,0.88)"
+            fill="rgba(59,130,246,0.16)"
+            stroke="rgba(59,130,246,0.88)"
             strokeWidth="2"
           />
           {points.map((point, index) => (
@@ -75,7 +75,7 @@ export function ProfileRadar({ profile }: { profile: LearningProfile }) {
               cy={point.y}
               r="3.2"
               fill="white"
-              stroke="rgba(0,122,255,0.9)"
+              stroke="rgba(59,130,246,0.9)"
               strokeWidth="2"
             />
           ))}

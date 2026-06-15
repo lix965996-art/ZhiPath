@@ -6,7 +6,6 @@ from typing import Any, Optional
 from langchain_core.language_models import BaseChatModel
 from langchain.chat_models import init_chat_model
 from bootstrap_env import load_project_env
-from base.credential_context import get_credential, get_overrides_for
 
 load_project_env()
 
@@ -39,8 +38,8 @@ class LLMFactory:
         **kwargs,
     ) -> BaseChatModel:
         if model is None:
-            model = "deepseek-v4-flash"
-            model_provider = model_provider or "deepseek"
+            model = "deepseek-chat"
+            model_provider = model_provider or "openai"
 
         config_kwargs: dict[str, Any] = {
             "model": model,
@@ -65,19 +64,15 @@ class LLMFactory:
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> BaseChatModel:
         return cls.create(
-            model=config.get("model_name", "deepseek-v4-flash"),
-            model_provider=config.get("model_provider", "deepseek"),
+            model=config.get("model_name", "deepseek-chat"),
+            model_provider=config.get("model_provider", "openai"),
             base_url=config.get("base_url"),
             temperature=config.get("temperature", 0),
         )
 
     @classmethod
     def from_profile(cls, profile_name: Optional[str] = None) -> BaseChatModel:
-        """Create an LLM from a named profile in the config.
-
-        If profile_name is None, uses the default profile.
-        Falls back to deepseek-v4-flash if the profile doesn't exist.
-        """
+        """从 yaml 配置的 profile 创建 LLM（回退用，读环境变量中的 API Key）。"""
         from config.loader import get_config
 
         config = get_config()
@@ -85,28 +80,39 @@ class LLMFactory:
         profile = config.llm.profiles.get(name)
 
         if profile is None:
-            # Fallback: treat name as a model name with deepseek provider
-            return cls.create(model=name or "deepseek-v4-flash", model_provider="deepseek")
+            return cls.create(model=name or "deepseek-chat", model_provider="deepseek")
 
-        # Resolve API key: 优先用户在浏览器配置的，回退环境变量
+        # 从环境变量读取 API Key（yaml profile 的回退机制）
         api_key_env = profile.api_key_env or _PROVIDER_KEY_ENV.get(profile.provider)
-        api_key = get_credential(api_key_env) if api_key_env else None
+        api_key = os.environ.get(api_key_env) if api_key_env else None
 
-        # 用户在前端可填的 base_url / model 覆盖（优先级最高）
-        user_base_url, user_model = (None, None)
-        if api_key_env:
-            user_base_url, user_model = get_overrides_for(api_key_env)
-
-        base_url = user_base_url or profile.base_url
+        base_url = profile.base_url
         if base_url is None and profile.provider in _PROVIDER_BASE_URL:
             base_url = _PROVIDER_BASE_URL[profile.provider]
 
-        model_name = user_model or profile.model_name
-
         return cls.create(
-            model=model_name,
+            model=profile.model_name,
             model_provider=profile.provider,
             temperature=profile.temperature,
             base_url=base_url,
             api_key=api_key,
+        )
+
+    @classmethod
+    def from_api_config(cls, config) -> BaseChatModel:
+        """从 ApiConfig 对象创建 LLM 实例。"""
+        from base.credential_context import ApiConfig
+
+        if not isinstance(config, ApiConfig):
+            config = ApiConfig.from_dict(config)
+
+        provider = "anthropic" if config.api_format == "anthropic" else "openai"
+        default_model = "claude-sonnet-4-20250514" if provider == "anthropic" else "deepseek-chat"
+
+        return cls.create(
+            model=config.model or default_model,
+            model_provider=provider,
+            api_key=config.api_key,
+            base_url=config.base_url,
+            temperature=0,
         )

@@ -61,6 +61,29 @@ class ChatOrchestrator:
                 await capability.run(context, bus)
             except Exception as exc:
                 logger.error("Capability %s failed: %s", cap_name, exc, exc_info=True)
+                # 检测 API 凭据相关错误并发送健康状态事件
+                error_msg = str(exc).lower()
+                if any(keyword in error_msg for keyword in ["429", "rate limit", "too many requests"]):
+                    bus.emit(StreamEvent(
+                        type=EventType.CREDENTIAL_HEALTH,
+                        content="rate_limited",
+                        source=cap_name,
+                        metadata={"error_code": 429, "message": str(exc)[:200]},
+                    ))
+                elif any(keyword in error_msg for keyword in ["401", "403", "unauthorized", "forbidden", "invalid api key", "authentication"]):
+                    bus.emit(StreamEvent(
+                        type=EventType.CREDENTIAL_HEALTH,
+                        content="auth_error",
+                        source=cap_name,
+                        metadata={"error_code": 401, "message": str(exc)[:200]},
+                    ))
+                elif any(keyword in error_msg for keyword in ["connection", "timeout", "refused", "network"]):
+                    bus.emit(StreamEvent(
+                        type=EventType.CREDENTIAL_HEALTH,
+                        content="connection_error",
+                        source=cap_name,
+                        metadata={"error_code": 0, "message": str(exc)[:200]},
+                    ))
                 bus.error(str(exc), source=cap_name)
             finally:
                 capability_done = True

@@ -6,8 +6,8 @@
 3. 对应 KG 节点的 1-hop 邻居也召回（前置 + 后继）
 4. 合并去重，按"语义分 + 图距离衰减"重排序
 
-效果：学生问"逻辑回归"时，GraphRAG 同时召回前置"线性回归"和后续"softmax"
-的材料，让 LLM 能在更完整的"知识地图"上回答。
+效果：学生问"死锁"时，GraphRAG 同时召回前置"进程管理"和相关"资源分配图"
+的材料，让 LLM 能在更完整的"408 知识地图"上回答。
 
 文献参考：Microsoft *GraphRAG: Unlocking LLM discovery on narrative private data* (2024)。
 """

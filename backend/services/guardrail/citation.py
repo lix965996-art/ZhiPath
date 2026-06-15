@@ -57,9 +57,19 @@ def build_cited_context(chunks: list[Any], max_chars: int = 3000) -> CitedKnowle
         score = float(getattr(chunk, "score", 0.0) or 0.0)
         doc_id = getattr(chunk, "document_id", "")
         retrieval_mode = getattr(chunk, "retrieval_mode", "")
+        source_path = getattr(chunk, "source_path", "") or ""
+        course = getattr(chunk, "course", "") or ""
+        doc_type = getattr(chunk, "type", "") or ""
+        file_ext = getattr(chunk, "file_ext", "") or ""
         tag_text = f" 标签：{', '.join(tags)}" if tags else ""
+        meta_lines = []
+        if course:
+            meta_lines.append(f"课程：{course}")
+        if doc_type:
+            meta_lines.append(f"类型：{doc_type}")
+        meta_text = ("\n" + "\n".join(meta_lines)) if meta_lines else ""
         chunk_text = (
-            f"[来源 #{index}] ### {title}{tag_text}\n{content}\n（相似度 {score:.2f}）"
+            f"[来源 #{index}] ### {title}{tag_text}{meta_text}\n{content}\n（相似度 {score:.2f}）"
         )
         if total + len(chunk_text) > max_chars:
             break
@@ -74,6 +84,10 @@ def build_cited_context(chunks: list[Any], max_chars: int = 3000) -> CitedKnowle
             "score": round(score, 3),
             "excerpt": _truncate(content, 160),
             "retrieval_mode": retrieval_mode,
+            "source_path": source_path,
+            "course": course,
+            "type": doc_type,
+            "file_ext": file_ext,
         })
 
     return CitedKnowledgeContext(

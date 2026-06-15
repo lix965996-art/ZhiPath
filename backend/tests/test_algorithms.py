@@ -31,7 +31,7 @@ def test_bkt_mastery_grows_with_correct_answers():
 def test_bkt_mastery_decays_with_wrong_answers():
     from services.mastery.bkt import BKTTracker, KnowledgeComponent
 
-    kc = KnowledgeComponent(kc_id="nn", label="神经网络")
+    kc = KnowledgeComponent(kc_id="deadlock", label="死锁")
     # 先做对让 mastery 上升
     for _ in range(3):
         BKTTracker.update(kc, correct=True)
@@ -54,15 +54,15 @@ def test_dkt_predicts_next_kc_probability(tmp_path, monkeypatch):
     res = asyncio.run(svc.fit_and_predict(
         "dkt_test",
         [
-            {"label": "梯度下降", "correct": True},
-            {"label": "反向传播", "correct": False},
-            {"label": "梯度下降", "correct": True},
-            {"label": "反向传播", "correct": True},
+            {"label": "进程同步", "correct": True},
+            {"label": "死锁", "correct": False},
+            {"label": "进程同步", "correct": True},
+            {"label": "死锁", "correct": True},
         ],
     ))
     assert res["loss"] is not None
-    assert "梯度下降" in res["predictions"]
-    assert 0.0 <= res["predictions"]["梯度下降"] <= 1.0
+    assert "进程同步" in res["predictions"]
+    assert 0.0 <= res["predictions"]["进程同步"] <= 1.0
 
 
 # ---------- FSRS ----------
@@ -242,7 +242,7 @@ def test_guardrail_blocks_prompt_injection():
 def test_guardrail_passes_normal_query():
     from services.guardrail.safety import check_content_safety
 
-    r = check_content_safety("帮我讲讲什么是梯度下降")
+    r = check_content_safety("帮我讲讲什么是死锁")
     assert r.safe is True
     assert r.severity == "ok"
 

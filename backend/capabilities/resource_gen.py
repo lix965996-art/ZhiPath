@@ -22,6 +22,7 @@ from modules.resource_gen.agents.kg_generator import generate_kg_with_llm
 from modules.resource_gen.agents.mermaid_generator import generate_mermaid_with_llm
 from modules.resource_gen.agents.mindmap_generator import generate_mindmap_with_llm
 from modules.resource_gen.agents.quiz_generator import generate_quiz_with_llm
+from modules.resource_gen.agents.case_study_generator import generate_case_study_with_llm
 from services.knowledge_graph import KnowledgeGraph
 from services.mastery import MasteryStore
 from services.exam.store import ExamStore
@@ -75,7 +76,7 @@ class ResourceGenerationCapability(PromptedLLMCapability):
         name="resource_gen",
         description="个性化讲义、练习题、案例、复习卡片和知识结构生成。",
         stages=["resource_generation"],
-        tools_used=["KnowledgeRetriever", "ResourceComposer", "QuizGenerator"],
+        tools_used=["KnowledgeRetriever", "ResourceComposer", "QuizGenerator", "CaseStudyGenerator"],
     )
     system_prompt = SYSTEM_PROMPT
     stage_name = "resource_generation"
@@ -94,7 +95,7 @@ class ResourceGenerationCapability(PromptedLLMCapability):
         profile = context.learner_profile or {}
 
         # 408 考研场景 → 把上下文注入 learning_doc 顶部
-        # 让 6 个生成器（Quiz/Flashcard/MindMap/CodeLab/Mermaid/KG）全部感知, 无需逐 prompt 改
+        # 让 7 个生成器（Quiz/Flashcard/MindMap/CodeLab/Mermaid/KG/CaseStudy）全部感知, 无需逐 prompt 改
         exam_ctx = profile.get("exam_context") if isinstance(profile, dict) else None
         if exam_ctx and isinstance(exam_ctx, dict) and exam_ctx.get("exam_code"):
             exam_lines = [
@@ -231,9 +232,24 @@ class ResourceGenerationCapability(PromptedLLMCapability):
                 learner_profile=profile,
                 learning_document=learning_doc,
             )
+            self._emit_agent_message(
+                stream,
+                "Orchestrator",
+                "CaseStudyGenerator",
+                {"topic_hint": context.user_message[:60]},
+                label="案例分析需求",
+            )
+            case_study_task = self._invoke_agent(
+                "CaseStudyGenerator",
+                lambda **kw: generate_case_study_with_llm(llm, **kw),
+                stream,
+                learner_profile=profile,
+                learning_document=learning_doc,
+                user_request=context.user_message,
+            )
 
-            quiz, flashcards, mindmap, code_lab, mermaid, kg_data = await asyncio.gather(
-                quiz_task, flashcard_task, mindmap_task, code_lab_task, mermaid_task, kg_task,
+            quiz, flashcards, mindmap, code_lab, mermaid, kg_data, case_study = await asyncio.gather(
+                quiz_task, flashcard_task, mindmap_task, code_lab_task, mermaid_task, kg_task, case_study_task,
             )
 
             # 把 KG 喂给图服务 + 创建对应 BKT KC（让"路径推荐"端到端打通）
@@ -291,6 +307,8 @@ class ResourceGenerationCapability(PromptedLLMCapability):
                 agent_results["代码实操"] = code_lab
             if mermaid:
                 agent_results["结构化图表"] = mermaid
+            if case_study:
+                agent_results["案例分析"] = case_study
             if kg_data:
                 agent_results["知识图谱"] = {
                     "node_count": len(kg_data.get("nodes", [])),
@@ -331,6 +349,7 @@ class ResourceGenerationCapability(PromptedLLMCapability):
                 exam=exam if quiz else None,
                 code_lab=code_lab,
                 mermaid=mermaid,
+                case_study=case_study,
                 audio_url=audio_url,
                 citation_sources=citation_sources,
             )

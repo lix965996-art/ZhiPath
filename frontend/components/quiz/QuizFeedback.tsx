@@ -72,7 +72,7 @@ export function QuizFeedback({ result }: QuizFeedbackProps) {
       </div>
 
       {plan && (
-        <div className="rounded-2xl border border-[rgba(0,122,255,0.16)] bg-[rgba(0,122,255,0.04)] p-3">
+        <div className="rounded-2xl border border-[rgba(59,130,246,0.16)] bg-[rgba(59,130,246,0.04)] p-3">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-[13px] font-semibold">
               <Sparkles size={15} className="text-[var(--primary)]" />

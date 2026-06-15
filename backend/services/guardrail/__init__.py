@@ -6,6 +6,7 @@
 
 from .citation import CitedKnowledgeContext, build_cited_context, extract_citation_sources
 from .safety import ContentSafetyResult, check_content_safety
+from .code_safety import CodeSafetyResult, check_code_safety
 
 __all__ = [
     "CitedKnowledgeContext",
@@ -13,4 +14,6 @@ __all__ = [
     "extract_citation_sources",
     "ContentSafetyResult",
     "check_content_safety",
+    "CodeSafetyResult",
+    "check_code_safety",
 ]

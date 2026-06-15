@@ -1,3 +1,3 @@
-from .credentials import CredentialsMiddleware, parse_credentials_from_headers
+from .credentials import CredentialsMiddleware
 
-__all__ = ["CredentialsMiddleware", "parse_credentials_from_headers"]
+__all__ = ["CredentialsMiddleware"]

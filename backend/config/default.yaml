@@ -87,6 +87,25 @@ rag:
   chunk_size: 1000
   num_retrieval_results: 5
 
+  # ── Reranker（检索重排序） ──
+  # 策略：crossencoder = 本地 CrossEncoder 模型（需 sentence-transformers）
+  #        llm         = 调用 LLM 做相关性打分（无需额外模型下载）
+  #        none        = 禁用重排序
+  reranker:
+    enabled: false   # 演示时关闭，避免首次加载 cross-encoder 模型超时
+    strategy: crossencoder
+    model_name: cross-encoder/ms-marco-MiniLM-L-6-v2
+    overfetch_factor: 3   # 先取 k×3 候选，重排序后截断到 k
+    max_length: 512
+
 server:
   host: 0.0.0.0
   port: 8000
+
+# 代码实操沙箱：编译运行学生 C 代码。编译器按 preference 顺序自动探测，
+# 也可用环境变量 ZHIPATH_C_COMPILER 显式指定一个可执行文件路径。
+code_lab:
+  compiler_preference: ["tcc", "gcc", "clang", "cl"]
+  compiler_path: ""        # 留空 → 自动探测 PATH
+  timeout_seconds: 5.0     # 编译 + 运行总超时
+  max_output_bytes: 65536  # stdout/stderr 截断阈值

@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlencode, urlparse
 
-from base.credential_context import get_credential
+from base.credential_context import get_tts_creds, get_any_enabled_config
 
 logger = logging.getLogger(__name__)
 
@@ -40,16 +40,14 @@ AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def iflytek_spark_available() -> bool:
-    """是否已配置星火 LLM 凭据（浏览器 or env 都算）。"""
-    return bool(get_credential("XF_SPARK_API_PASSWORD"))
+    """是否有任何可用的 LLM 配置。"""
+    return get_any_enabled_config() is not None
 
 
 def iflytek_tts_available() -> bool:
-    """是否已配置讯飞 TTS 凭据（浏览器 or env 都算）。"""
-    return all(
-        get_credential(key)
-        for key in ("XF_TTS_APPID", "XF_TTS_API_KEY", "XF_TTS_API_SECRET")
-    )
+    """是否已配置讯飞 TTS 凭据。"""
+    tts = get_tts_creds()
+    return bool(tts.get("XF_TTS_APPID") and tts.get("XF_TTS_API_KEY") and tts.get("XF_TTS_API_SECRET"))
 
 
 class IFlytekTTS:
@@ -71,9 +69,10 @@ class IFlytekTTS:
         voice: str = "xiaoyan",
     ) -> None:
         # 优先用户在浏览器配置的，回退环境变量
-        self.appid = appid or get_credential("XF_TTS_APPID") or ""
-        self.api_key = api_key or get_credential("XF_TTS_API_KEY") or ""
-        self.api_secret = api_secret or get_credential("XF_TTS_API_SECRET") or ""
+        tts = get_tts_creds()
+        self.appid = appid or tts.get("XF_TTS_APPID", "") or ""
+        self.api_key = api_key or tts.get("XF_TTS_API_KEY", "") or ""
+        self.api_secret = api_secret or tts.get("XF_TTS_API_SECRET", "") or ""
         self.voice = voice
 
     def is_ready(self) -> bool:
@@ -86,6 +85,15 @@ class IFlytekTTS:
             f"date: {now}\n"
             f"GET {self.PATH} HTTP/1.1"
         )
+        logger.debug(
+            "TTS auth: appid=%s api_key=%s…%s api_secret=%s…%s",
+            self.appid,
+            self.api_key[:4] if len(self.api_key) > 4 else self.api_key,
+            self.api_key[-4:] if len(self.api_key) > 4 else "",
+            self.api_secret[:4] if len(self.api_secret) > 4 else self.api_secret,
+            self.api_secret[-4:] if len(self.api_secret) > 4 else "",
+        )
+        logger.debug("TTS signature_origin:\n%s", signature_origin)
         signature_sha = hmac.new(
             self.api_secret.encode("utf-8"),
             signature_origin.encode("utf-8"),
@@ -98,7 +106,9 @@ class IFlytekTTS:
         )
         authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode("utf-8")
         params = {"authorization": authorization, "date": now, "host": self.HOST}
-        return f"wss://{self.HOST}{self.PATH}?{urlencode(params)}"
+        full_url = f"wss://{self.HOST}{self.PATH}?{urlencode(params)}"
+        logger.debug("TTS full URL (first 200 chars): %s", full_url[:200])
+        return full_url
 
     def synthesize(self, text: str, filename_hint: str = "lecture") -> Optional[str]:
         """同步把文本合成为 wav 文件，返回相对 URL；失败返回 None。

@@ -139,18 +139,17 @@ export function NextActionCard({ sessionId, onPick }: Props) {
         text: `今日待复习 ${dueCount} 张卡片`,
         detail: "按 FSRS 间隔重复算法，今天到期。先清完再学新内容，记忆效率最高。",
         capability: "agentic",
-        prompt: "今天该复习什么？给我一份当下最该看的内容",
+        prompt: "今天 408 该复习什么？给我一份当下最该看的内容",
         icon: TimerReset,
         tint: "from-amber-500/30 to-amber-700/0",
       };
     }
-    // 优先 4: 都没数据 → 推全流程闭环
+    // 优先 4: 都没数据 → 先做一次 408 诊断
     return {
-      text: "从一次完整学习闭环开始",
-      detail:
-        "把你的目标告诉 Auto-Tutor，它会自动诊断 → 出资源 → 测验 → 重规划。一气呵成。",
-      capability: "auto_tutor",
-      prompt: "我想 2 周入门机器学习，帮我跑一次完整的学习闭环",
+      text: "先做一次 408 学情诊断",
+      detail: "先确认薄弱科目和当前优先级，再生成对应讲义、习题和代码实操。",
+      capability: "agentic",
+      prompt: "我想 2 周强化 408，请先诊断我的薄弱点，再安排下一步学习内容",
       icon: Sparkles,
       tint: "from-violet-500/30 to-violet-700/0",
     };
@@ -175,14 +174,14 @@ export function NextActionCard({ sessionId, onPick }: Props) {
     if (dueCount > 0 && primary.capability !== "agentic") {
       out.push({
         label: `复习 ${dueCount} 张`,
-        prompt: "今天该复习什么？给我一份当下最该看的内容",
+        prompt: "今天 408 该复习什么？给我一份当下最该看的内容",
         capability: "agentic",
       });
     }
     if (out.length < 3) {
       out.push({
         label: "让 AI 自己决定",
-        prompt: "根据我的画像和掌握度告诉我接下来该学什么",
+        prompt: "根据我的 408 掌握度告诉我接下来该补哪一科",
         capability: "agentic",
       });
     }

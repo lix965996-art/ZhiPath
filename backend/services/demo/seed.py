@@ -3,7 +3,7 @@
 设计目标：评委第一次打开 ZhiPath 时，主界面 / Dashboard / Classroom 各页都不是空的。
 通过 POST /api/v1/demo/seed 创建一个"小明同学"演示会话，并填充：
 - 7 维度学习者画像（带证据链）
-- 8 个 KG 节点 + 9 条前后置依赖边（机器学习领域）
+- 8 个 KG 节点 + 9 条前后置依赖边（408 计算机专业基础）
 - 12 个 BKT 知识点（含不同掌握度的历史曲线）
 - 6 张 FSRS 复习卡（含到期分布）
 - 1 份资源包（含 Quiz、Flashcard、MindMap、Mermaid、CodeLab）
@@ -34,52 +34,52 @@ DEMO_SESSION_ID = "demo_session_xiaoming"
 DEMO_LEARNER_NAME = "小明（演示账号）"
 
 DEMO_KG_NODES = [
-    {"id": "linear_algebra", "label": "线性代数基础", "category": "concept", "summary": "向量、矩阵、特征值的工程化基础", "difficulty": 0.3},
-    {"id": "probability", "label": "概率统计基础", "category": "concept", "summary": "贝叶斯、期望、方差", "difficulty": 0.4},
-    {"id": "python_basics", "label": "Python 基础", "category": "skill", "summary": "数据类型、控制流、函数", "difficulty": 0.2},
-    {"id": "numpy_pandas", "label": "NumPy / Pandas", "category": "tool", "summary": "数值与表格数据处理", "difficulty": 0.35},
-    {"id": "linear_regression", "label": "线性回归", "category": "algorithm", "summary": "监督学习入门", "difficulty": 0.4},
-    {"id": "logistic_regression", "label": "逻辑回归", "category": "algorithm", "summary": "二分类基础", "difficulty": 0.5},
-    {"id": "decision_tree", "label": "决策树", "category": "algorithm", "summary": "可解释分类器", "difficulty": 0.55},
-    {"id": "neural_network", "label": "神经网络入门", "category": "algorithm", "summary": "前向 + 反向传播", "difficulty": 0.75},
+    {"id": "linear_list", "label": "线性表", "category": "data_structure", "summary": "顺序表、链表与基本操作", "difficulty": 0.3},
+    {"id": "binary_tree", "label": "二叉树遍历", "category": "data_structure", "summary": "前序、中序、后序、层序遍历", "difficulty": 0.45},
+    {"id": "cache_mapping", "label": "Cache 映射方式", "category": "computer_org", "summary": "直接映射、全相联、组相联", "difficulty": 0.6},
+    {"id": "instruction_pipeline", "label": "指令流水线", "category": "computer_org", "summary": "流水线性能与相关冲突", "difficulty": 0.65},
+    {"id": "process_management", "label": "进程管理", "category": "os", "summary": "进程状态、PCB、调度与同步", "difficulty": 0.5},
+    {"id": "deadlock", "label": "死锁", "category": "os", "summary": "必要条件、预防、避免与检测", "difficulty": 0.7},
+    {"id": "tcp_handshake", "label": "TCP 三次握手", "category": "network", "summary": "连接建立、序号与确认", "difficulty": 0.45},
+    {"id": "ip_subnet", "label": "IP 子网划分", "category": "network", "summary": "CIDR、子网掩码与路由聚合", "difficulty": 0.55},
 ]
 
 DEMO_KG_EDGES = [
-    {"source": "linear_algebra", "target": "linear_regression", "relation": "prerequisite"},
-    {"source": "probability", "target": "logistic_regression", "relation": "prerequisite"},
-    {"source": "python_basics", "target": "numpy_pandas", "relation": "prerequisite"},
-    {"source": "numpy_pandas", "target": "linear_regression", "relation": "prerequisite"},
-    {"source": "numpy_pandas", "target": "logistic_regression", "relation": "prerequisite"},
-    {"source": "linear_regression", "target": "logistic_regression", "relation": "builds_on"},
-    {"source": "logistic_regression", "target": "neural_network", "relation": "builds_on"},
-    {"source": "linear_regression", "target": "decision_tree", "relation": "related"},
-    {"source": "decision_tree", "target": "neural_network", "relation": "builds_on"},
+    {"source": "linear_list", "target": "binary_tree", "relation": "prerequisite"},
+    {"source": "binary_tree", "target": "deadlock", "relation": "review_parallel"},
+    {"source": "cache_mapping", "target": "instruction_pipeline", "relation": "builds_on"},
+    {"source": "process_management", "target": "deadlock", "relation": "prerequisite"},
+    {"source": "tcp_handshake", "target": "ip_subnet", "relation": "network_foundation"},
+    {"source": "cache_mapping", "target": "process_management", "relation": "cross_subject"},
+    {"source": "deadlock", "target": "tcp_handshake", "relation": "408_rotation"},
+    {"source": "binary_tree", "target": "cache_mapping", "relation": "408_rotation"},
+    {"source": "ip_subnet", "target": "process_management", "relation": "408_rotation"},
 ]
 
 # 每个 KC 的"答题历史" — (label, [correct 序列])
 # mastery 会从 0.3 起步，按 BKT 更新；序列长度 ≈ 6
 DEMO_BKT_HISTORY = [
-    ("线性代数基础", [True, True, True, True, False, True]),       # 高掌握
-    ("概率统计基础", [True, True, False, True, True, True]),
-    ("Python 基础", [True, True, True, True, True, True]),           # 满分
-    ("NumPy / Pandas", [True, False, True, True, True]),
-    ("线性回归", [True, True, False, True, False, True]),
-    ("逻辑回归", [False, True, False, True, False, True]),            # 中等
-    ("决策树", [False, False, True, False, False, True]),            # 薄弱
-    ("神经网络入门", [False, False, False, False]),                  # 高薄弱
-    ("交叉熵损失", [False, False, False]),                            # 新接触
-    ("梯度下降", [True, False, True, False, True]),
-    ("过拟合识别", [False, True, False]),
-    ("正则化方法", [False, False, True]),
+    ("线性表", [True, True, True, True, False, True]),
+    ("二叉树遍历", [True, True, False, True, True, True]),
+    ("图的遍历", [True, True, True, False, True]),
+    ("Cache 映射方式", [False, True, False, True, False, True]),
+    ("指令流水线", [False, False, True, False, True]),
+    ("进程管理", [True, False, True, False, True]),
+    ("死锁", [False, False, True, False, False, True]),
+    ("内存管理", [False, True, False, False]),
+    ("TCP 三次握手", [True, True, False, True]),
+    ("滑动窗口协议", [False, True, False, True, False]),
+    ("IP 子网划分", [False, False, True]),
+    ("路由选择", [False, True, False]),
 ]
 
 DEMO_FSRS_CARDS = [
-    {"front": "什么是过拟合？", "back": "模型在训练集上表现很好，但在测试集上表现差", "topic": "过拟合识别"},
-    {"front": "L1 vs L2 正则化的区别", "back": "L1 产生稀疏解，L2 让权重更平滑", "topic": "正则化方法"},
-    {"front": "softmax 的数学定义", "back": "exp(x_i) / sum(exp(x_j))", "topic": "神经网络入门"},
-    {"front": "交叉熵损失的公式", "back": "-Σ y_i * log(p_i)", "topic": "交叉熵损失"},
-    {"front": "决策树的分裂标准", "back": "信息增益、基尼系数、卡方", "topic": "决策树"},
-    {"front": "梯度下降的三种变体", "back": "BGD / SGD / Mini-batch GD", "topic": "梯度下降"},
+    {"front": "死锁产生的四个必要条件", "back": "互斥、不可剥夺、请求并保持、循环等待", "topic": "死锁"},
+    {"front": "Cache 的三种映射方式", "back": "直接映射、全相联映射、组相联映射", "topic": "Cache 映射方式"},
+    {"front": "二叉树常见遍历方式", "back": "前序、中序、后序、层序遍历", "topic": "二叉树遍历"},
+    {"front": "TCP 三次握手的核心目的", "back": "确认双方收发能力并同步初始序号", "topic": "TCP 三次握手"},
+    {"front": "PCB 中通常包含什么", "back": "进程标识、处理机状态、调度信息、控制信息等", "topic": "进程管理"},
+    {"front": "页式存储的地址结构", "back": "页号 + 页内偏移", "topic": "内存管理"},
 ]
 
 
@@ -100,17 +100,17 @@ async def seed_demo_data() -> dict[str, Any]:
     profile_svc = LearningProfileService()
     await profile_svc.update_from_user_message(
         sid,
-        "我是计算机大二学生，想 2 周入门机器学习，零基础但有 Python 基础",
+        "我是计算机大二学生，正在备考 408，想 2 周强化操作系统和计算机组成原理",
         capability="goal",
     )
     await profile_svc.update_from_user_message(
         sid,
-        "我分不清监督学习和无监督学习，希望多看通俗案例",
+        "我分不清 Cache 的直接映射、全相联和组相联，希望多看 408 例题",
         capability="chat",
     )
     await profile_svc.update_from_user_message(
         sid,
-        "目标是能独立做一个房价预测项目，对决策树和神经网络的反向传播比较弱",
+        "目标是能稳定做 408 综合题，对死锁、进程调度和 TCP 三次握手比较弱",
         capability="goal",
     )
 
@@ -146,21 +146,21 @@ async def seed_demo_data() -> dict[str, Any]:
         session_id=sid,
         verb="passed",
         object_id="quiz/demo_quiz_001",
-        object_name="机器学习入门测验",
+        object_name="408 操作系统测验",
         result={"score": {"scaled": 0.85, "raw": 17, "max": 20}, "completion": True, "success": True},
     )
     lrs.emit(
         session_id=sid,
         verb="experienced",
         object_id="resource/demo_resource_pack_001",
-        object_name="机器学习个性化资源包",
+        object_name="408 个性化资源包",
         result={"completion": True},
     )
     lrs.emit(
         session_id=sid,
         verb="completed",
-        object_id="path/intro_ml",
-        object_name="机器学习入门路径",
+        object_id="path/intro_408",
+        object_name="408 强化路径",
         result={"completion": False, "progress": 0.42},
     )
 

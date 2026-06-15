@@ -139,7 +139,7 @@ export function AgentWorkflowGraph({
         compact ? "h-[250px] p-4" : "h-[480px] p-5"
       }`}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(0,122,255,0.08),transparent_18rem)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(59,130,246,0.08),transparent_18rem)]" />
       <div className="relative z-10 flex items-center justify-between">
         <div>
           <div className="text-[14px] font-semibold">多智能体协作链路</div>
@@ -150,7 +150,7 @@ export function AgentWorkflowGraph({
         <span
           className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
             running
-              ? "bg-[rgba(0,122,255,0.1)] text-[var(--primary)]"
+              ? "bg-[rgba(59,130,246,0.1)] text-[var(--primary)]"
               : "bg-[var(--muted)] text-[var(--muted-foreground)]"
           }`}
         >
@@ -184,7 +184,7 @@ export function AgentWorkflowGraph({
                   }
                 />
                 {isActive && (
-                  <circle r={compact ? "0.7" : "0.9"} fill="rgba(0,122,255,0.86)">
+                  <circle r={compact ? "0.7" : "0.9"} fill="rgba(59,130,246,0.86)">
                     <animateMotion dur="1.45s" path={path} repeatCount="indefinite" />
                   </circle>
                 )}
@@ -269,7 +269,7 @@ function AgentNode({
     done: "border-[rgba(52,199,89,0.35)] bg-[var(--card-solid)] text-emerald-700 dark:text-emerald-400",
     error: "border-red-200 dark:border-red-800 bg-[var(--card-solid)] text-red-600 dark:text-red-400",
     idle: "border-[var(--border)] bg-[var(--card-solid)] text-[var(--muted-foreground)]",
-    running: "lf-agent-node-running border-[rgba(0,122,255,0.4)] bg-[var(--card-solid)] text-[var(--primary)]",
+    running: "lf-agent-node-running border-[rgba(59,130,246,0.4)] bg-[var(--card-solid)] text-[var(--primary)]",
   }[status];
 
   return (
@@ -278,7 +278,7 @@ function AgentNode({
       onClick={onSelect}
       className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl border shadow-sm backdrop-blur ${statusClass} ${
         compact ? "w-[74px] px-2 py-2" : "w-[104px] px-3 py-2.5"
-      } ${selected ? "ring-2 ring-[rgba(0,122,255,0.28)]" : ""}`}
+      } ${selected ? "ring-2 ring-[rgba(59,130,246,0.28)]" : ""}`}
       style={{ left: `${node.x}%`, top: `${node.y}%` }}
     >
       <div className="flex items-center justify-center gap-1.5">
@@ -310,7 +310,7 @@ function StatusBadge({ status }: { status: NodeStatus }) {
         status === "done"
           ? "bg-[rgba(52,199,89,0.12)] text-emerald-700"
           : status === "running"
-            ? "bg-[rgba(0,122,255,0.1)] text-[var(--primary)]"
+            ? "bg-[rgba(59,130,246,0.1)] text-[var(--primary)]"
             : status === "error"
               ? "bg-red-50 text-red-600"
               : "bg-[var(--muted)] text-[var(--muted-foreground)]"

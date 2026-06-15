@@ -122,7 +122,7 @@ function EngineeringTrace({
         className="flex w-full items-center justify-between px-4 py-3 text-left"
       >
         <span className="flex items-center gap-2">
-          <span className="relative flex h-7 w-7 items-center justify-center rounded-xl bg-[rgba(0,122,255,0.12)] text-[var(--primary)]">
+          <span className="relative flex h-7 w-7 items-center justify-center rounded-xl bg-[rgba(59,130,246,0.12)] text-[var(--primary)]">
             <Atom size={16} className={isStreaming ? "lf-thinking-orbit" : ""} />
           </span>
           <span>
@@ -157,7 +157,7 @@ function TraceRow({ item, isActive }: { item: string; isActive?: boolean }) {
     <div className="relative grid gap-2 pb-3 pl-5 text-[13px] leading-6 last:pb-0 sm:grid-cols-[96px_minmax(0,1fr)]">
       <span
         className={`absolute left-0 top-2 h-2 w-2 rounded-full ${
-          isActive ? "bg-[var(--primary)] shadow-[0_0_0_5px_rgba(0,122,255,0.14)]" : "bg-[rgba(60,60,67,0.24)]"
+          isActive ? "bg-[var(--primary)] shadow-[0_0_0_5px_rgba(59,130,246,0.14)]" : "bg-[rgba(60,60,67,0.24)]"
         }`}
       />
       <span className="font-medium text-[var(--primary)]">{label}</span>
@@ -218,7 +218,7 @@ export function MessageBubble({
         <BrandMark variant="assistant" size={32} className="mt-1" />
       )}
 
-      <div className="max-w-[min(720px,86%)]">
+      <div className="max-w-[min(720px,86%)] min-w-0">
         {!isUser && <EngineeringTrace items={thinking} isStreaming={isStreaming} />}
 
         {!isUser && quizQuestions.length > 0 && onQuizSubmit && (
@@ -235,7 +235,7 @@ export function MessageBubble({
 
         {shouldShowResponseBubble && (
           <div
-            className={`rounded-[22px] px-4 py-3 text-[14px] leading-6 shadow-sm ${
+            className={`min-w-0 break-words rounded-[22px] px-4 py-3 text-[14px] leading-6 shadow-sm ${
               isUser
                 ? "bg-[var(--primary)] text-white"
                 : "border border-[var(--border)] bg-white/85 text-[var(--foreground)]"

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ToastViewport } from "@/components/ui/Toast";
 import { RoleProvider } from "@/context/RoleContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
   title: "ZhiPath - 个性化资源生成与学习多智能体系统",
@@ -29,10 +30,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="notranslate" translate="no">
-        <RoleProvider>
-          {children}
-          <ToastViewport />
-        </RoleProvider>
+        <AuthProvider>
+          <RoleProvider>
+            {children}
+            <ToastViewport />
+          </RoleProvider>
+        </AuthProvider>
       </body>
     </html>
   );

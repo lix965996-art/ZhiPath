@@ -7,7 +7,7 @@
 4. 多智能体调用次数（按 Span 类型聚合）
 5. 下一步建议（来自 KG 推荐）
 
-仅依赖 reportlab，纯 Python 渲染。中文字体优先使用系统 SimHei/SimSun 兼容字体；
+仅依赖 reportlab，由后端渲染。中文字体优先使用系统 SimHei/SimSun 兼容字体；
 缺字体时退化为英文但保留所有数据指标。
 """
 from __future__ import annotations

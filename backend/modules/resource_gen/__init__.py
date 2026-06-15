@@ -5,8 +5,10 @@ from .agents import (
     generate_flashcards_with_llm,
     MindMapGenerator,
     generate_mindmap_with_llm,
+    CaseStudyGenerator,
+    generate_case_study_with_llm,
 )
-from .schemas import Quiz, Flashcard, FlashcardSet, MindMap, MindMapNode
+from .schemas import Quiz, Flashcard, FlashcardSet, MindMap, MindMapNode, CaseStudy, CaseStudyItem
 
 __all__ = [
     "QuizGenerator",
@@ -15,9 +17,13 @@ __all__ = [
     "generate_flashcards_with_llm",
     "MindMapGenerator",
     "generate_mindmap_with_llm",
+    "CaseStudyGenerator",
+    "generate_case_study_with_llm",
     "Quiz",
     "Flashcard",
     "FlashcardSet",
     "MindMap",
     "MindMapNode",
+    "CaseStudy",
+    "CaseStudyItem",
 ]

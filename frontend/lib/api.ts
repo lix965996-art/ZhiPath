@@ -3,6 +3,12 @@ import { withCredentials } from "@/lib/credentials";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "";
 const WS_HOST = process.env.NEXT_PUBLIC_WS_HOST || "localhost:8000";
 
+/** 从 localStorage 读取 auth token。 */
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("zhipath-auth-token");
+}
+
 export function apiUrl(path: string): string {
   return `${API_BASE}${path}`;
 }
@@ -12,10 +18,17 @@ export function wsUrl(path: string): string {
   return `${protocol}//${WS_HOST}${path}`;
 }
 
-/** fetch 包装：自动注入 X-LF-* 凭据头 + JSON content-type。
+/** fetch 包装：自动注入 X-LF-* 凭据头 + auth token。
  *  其余参数透传。所有内部 API 调用应统一走这里。 */
 export async function apiFetch(input: string, init: RequestInit = {}): Promise<Response> {
-  const headers = withCredentials(init.headers);
+  const headers = new Headers(withCredentials(init.headers));
+
+  // 注入 auth token（如果有）
+  const token = getAuthToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
   return fetch(apiUrl(input), { ...init, headers });
 }
 
@@ -32,6 +45,27 @@ export interface ProfileDimensionCoverage {
   total: number;
   ratio: number;
   dimensions: Record<string, boolean>;
+}
+
+export interface ProfileInsightCard {
+  id: string;
+  title: string;
+  dimension: string;
+  status: string;
+  confidence: number;
+  evidence_count: number;
+  sources: string[];
+  rationale: string;
+  action: string;
+  target?: string;
+}
+
+export interface ProfileInsights {
+  trust_score: number;
+  evidence_total: number;
+  cards: ProfileInsightCard[];
+  next_actions: string[];
+  summary: string;
 }
 
 /** 408 考研场景上下文（作者本人 dogfood 场景）。 */
@@ -64,6 +98,7 @@ export interface LearningProfile {
   evidence_log?: ProfileEvidenceEntry[];
   evidence_index?: Record<string, Array<{ dimension: string; turn: number; snippet: string }>>;
   dimension_coverage?: ProfileDimensionCoverage;
+  profile_insights?: ProfileInsights;
   exam_context?: ExamContext;
 }
 
@@ -367,12 +402,18 @@ export interface ResourcePackageAsset {
   language?: string;
 }
 
+export interface CodeCheckpoint {
+  label: string;
+}
+
 export interface CodeLabSnippet {
   title: string;
   description: string;
   language: string;
   code: string;
+  test_input?: string;
   expected_output?: string;
+  checkpoints?: CodeCheckpoint[];
   hints?: string[];
 }
 
@@ -381,6 +422,21 @@ export interface CodeLabResource {
   language: string;
   snippets: CodeLabSnippet[];
   practice_tasks?: string[];
+}
+
+export interface CodeLabRunResult {
+  ok: boolean;
+  ran: boolean;
+  stdout: string;
+  stderr: string;
+  exit_code: number | null;
+  timed_out: boolean;
+  blocked: boolean;
+  compiler: string;
+  reason: string; // ok / runtime_error / compile_error / timeout / no_compiler / blocked
+  matched_patterns?: string[];
+  matched_expected?: boolean;
+  diff?: string[];
 }
 
 export interface MermaidDiagram {
@@ -533,9 +589,31 @@ export interface LearningResourcePackage {
     timestamp: string | null;
     note: string;
   }>;
+  // 同主题重复生成会合并更新, 此为版本计数
+  regeneration_count?: number;
   next_actions: string[];
   created_at: string;
   updated_at: string;
+}
+
+export async function runCCode(input: {
+  code: string;
+  stdin?: string;
+  expected_output?: string;
+}): Promise<CodeLabRunResult> {
+  const response = await apiFetch("/api/v1/resources/code-lab/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      code: input.code,
+      stdin: input.stdin ?? "",
+      expected_output: input.expected_output ?? "",
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`代码运行失败：${response.status}`);
+  }
+  return response.json();
 }
 
 export async function listResourcePackages(sessionId?: string): Promise<LearningResourcePackage[]> {
@@ -595,6 +673,17 @@ export interface MasterySnapshot {
 export async function getMastery(sessionId: string): Promise<MasterySnapshot> {
   const r = await apiFetch(`/api/v1/mastery/${sessionId}`, { cache: "no-store" });
   if (!r.ok) throw new Error("mastery load failed");
+  return r.json();
+}
+
+// ---- Learning History ----
+
+/** 每个知识点的学习次数（基于会话消息关键词命中） */
+export type LearningHistory = Record<string, number>;
+
+export async function getLearningHistory(): Promise<LearningHistory> {
+  const r = await apiFetch("/api/v1/knowledge/learning_history", { cache: "no-store" });
+  if (!r.ok) return {};
   return r.json();
 }
 
@@ -757,97 +846,29 @@ export async function getKGSuggestions(sessionId: string, threshold = 0.6, limit
   return r.json();
 }
 
-// ---- Classroom ----
+// ── Credentials API (简化版：直接传入配置测试) ────────────────────
 
-export interface ClassroomStudent {
-  session_id: string;
-  title: string;
-  turn_count: number;
-  learning_goal: string;
-  avg_mastery: number;
-  weak_count: number;
-  mature_count: number;
-  due_count: number;
-  weak_top: string[];
-}
-
-export interface ClassroomOverview {
-  student_count: number;
-  students: ClassroomStudent[];
-  aggregate: {
-    avg_mastery: number;
-    review_due_total: number;
-    top_weak_kcs: Array<{ label: string; count: number }>;
-  };
-}
-
-export async function getClassroomOverview(limit = 30): Promise<ClassroomOverview> {
-  const r = await apiFetch(`/api/v1/classroom/overview?limit=${limit}`, {
-    cache: "no-store",
-  });
-  if (!r.ok) {
-    return { student_count: 0, students: [], aggregate: { avg_mastery: 0, review_due_total: 0, top_weak_kcs: [] } };
-  }
-  return r.json();
-}
-
-// ── Settings: Custom LLM endpoint ────────────────────────────────────
-
-export interface SettingsCustomLlm {
-  enabled: boolean;
-  base_url: string;
-  api_key: string;
-  model_name: string;
-  api_format: "openai" | "anthropic" | "custom";
-}
-
-export async function getSettingsCustomLlm(): Promise<SettingsCustomLlm> {
-  const r = await apiFetch("/api/v1/settings/custom-llm", { cache: "no-store" });
-  if (!r.ok) throw new Error(`Failed to fetch custom LLM: ${r.status}`);
-  return r.json();
-}
-
-export async function saveSettingsCustomLlm(config: SettingsCustomLlm): Promise<{ saved: boolean }> {
-  const r = await apiFetch("/api/v1/settings/custom-llm", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(config),
-  });
-  if (!r.ok) throw new Error(`Failed to save custom LLM: ${r.status}`);
-  return r.json();
-}
-
-// ---- Credentials (浏览器模式：localStorage + header 透传) ----
-
-export interface CredentialStatusItem {
-  key: string;
-  label: string;
-  group: string;
-  source: "browser" | "env" | "missing";
-  available: boolean;
-}
-
-export async function getCredentialStatus(): Promise<{
-  items: CredentialStatusItem[];
-  note: string;
-}> {
-  const r = await apiFetch("/api/v1/credentials/status", { cache: "no-store" });
-  if (!r.ok) throw new Error(`Failed to fetch credential status: ${r.status}`);
-  return r.json();
-}
-
-export interface CredentialTestResult {
+export interface TestConfigResult {
   ok: boolean;
-  reason?: string;
-  profile?: string;
+  reason: string;
   preview?: string;
 }
 
-export async function testCredentialKey(key: string): Promise<CredentialTestResult> {
+export async function testApiConfig(config: {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  apiFormat: "openai" | "anthropic";
+}): Promise<TestConfigResult> {
   const r = await apiFetch("/api/v1/credentials/test", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key }),
+    body: JSON.stringify({
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl,
+      model: config.model,
+      apiFormat: config.apiFormat,
+    }),
   });
   if (!r.ok) {
     return { ok: false, reason: `HTTP ${r.status}` };
@@ -857,23 +878,43 @@ export async function testCredentialKey(key: string): Promise<CredentialTestResu
 
 export interface FetchModelsResult {
   ok: boolean;
-  reason?: string;
+  reason: string;
   models: string[];
-  count?: number;
+  count: number;
 }
 
-export async function fetchModels(
-  apiKey: string,
-  baseUrl: string,
-  apiFormat: "openai" | "anthropic",
-): Promise<FetchModelsResult> {
+export async function fetchModels(config: {
+  apiKey: string;
+  baseUrl: string;
+  apiFormat: "openai" | "anthropic";
+}): Promise<FetchModelsResult> {
   const r = await apiFetch("/api/v1/credentials/fetch-models", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ api_key: apiKey, base_url: baseUrl, api_format: apiFormat }),
+    body: JSON.stringify({
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl,
+      apiFormat: config.apiFormat,
+    }),
   });
   if (!r.ok) {
-    return { ok: false, reason: `HTTP ${r.status}`, models: [] };
+    return { ok: false, reason: `HTTP ${r.status}`, models: [], count: 0 };
+  }
+  return r.json();
+}
+
+export async function testTtsConfig(tts: {
+  appid: string;
+  apiKey: string;
+  apiSecret: string;
+}): Promise<TestConfigResult> {
+  const r = await apiFetch("/api/v1/credentials/test-tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(tts),
+  });
+  if (!r.ok) {
+    return { ok: false, reason: `HTTP ${r.status}` };
   }
   return r.json();
 }

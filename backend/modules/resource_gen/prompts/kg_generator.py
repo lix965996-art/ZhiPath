@@ -34,7 +34,7 @@ kg_generator_system_prompt = f"""
 3. edges 只允许"前置 → 依赖"语义；**绝不能出现环**（A→B 且 B→A 是非法的）。
 4. relation 字段必须从 prerequisite / related / builds_on / special_case_of 中选。
 5. 边数 ≤ 节点数 × 2，避免图过密。
-6. 优先体现真正的"学习顺序"，如 `linear_regression → logistic_regression → softmax`。
+6. 优先体现真正的"学习顺序"，如 `process_management → deadlock → banker_algorithm`。
 
 **最终输出格式**（严格 JSON，不要解释，不要 Markdown 包裹）：
 {kg_output_format}

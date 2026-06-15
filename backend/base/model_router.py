@@ -1,31 +1,17 @@
-"""多模型智能路由：按任务类型 + 复杂度自动选最合适的 LLM profile。
+"""多模型智能路由（简化版）：优先使用用户配置，回退到 yaml 默认 profile。
 
-设计目标：
-- 简单对话 → 快/便宜的小模型（讯飞星火 Lite / Kimi K2.5）
-- 结构化输出 (JSON Schema)：DeepSeek Pro / Kimi K2.6（指令跟随好）
-- 长文创作（讲义）：DeepSeek Pro
-- 反思/规划：DeepSeek Pro（高 reasoning）
-- 代码生成：DeepSeek Pro（代码强）
-- 图表/Mermaid：可用任何指令跟随强的模型
-
-每个任务有：
-- primary (首选)
-- fallback (主用不可用时降级链)
-- 实际可用模型 = LLM profile 在 env 中能拿到 api_key 的那些
-
-带 fallback 链：如果首选不可用（API key 缺失/调用失败），自动尝试 fallback。
-这是工程化的体现 — 不是死写一个模型而是按需路由。
+路由逻辑：
+1. 先查用户在前端配置的 ApiConfig（按任务类型匹配）
+2. 回退到 config/default.yaml 中定义的 profile
 """
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from base.credential_context import get_credential
+from base.credential_context import get_any_enabled_config, get_config_for_task
 from base.llm_factory import LLMFactory
-from config.loader import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +66,7 @@ _DEFAULT_ROUTES: dict[str, TaskRoute] = {
 
 
 class ModelRouter:
-    """全局路由实例：暴露 `for_task(name) → BaseChatModel` 单点入口。"""
+    """全局路由实例：暴露 `for_task(name) → (BaseChatModel, profile_name)` 单点入口。"""
 
     def __init__(self, routes: dict[str, TaskRoute] | None = None) -> None:
         self.routes = routes or _DEFAULT_ROUTES
@@ -93,7 +79,6 @@ class ModelRouter:
                 "primary": r.primary,
                 "fallbacks": list(r.fallbacks),
                 "description": r.description,
-                "primary_available": self._profile_available(r.primary),
             }
             for r in self.routes.values()
         ]
@@ -104,43 +89,42 @@ class ModelRouter:
         override: str | None = None,
         on_select: Callable[[str], None] | None = None,
     ):
-        """返回 (BaseChatModel, profile_name)。"""
-        # ── 优先检查自定义 LLM 端点 ──
-        custom_base_url = os.environ.get("CUSTOM_LLM_BASE_URL", "")
-        if custom_base_url:
+        """返回 (BaseChatModel, profile_name)。
+
+        优先级：
+        1. 用户在前端配置的 ApiConfig（按 task 类型匹配）
+        2. override 指定的 profile
+        3. yaml 路由表中的 primary → fallbacks
+        """
+        # ── 1. 用户配置优先 ──
+        user_config = get_config_for_task(task)
+        if user_config:
             try:
-                custom_model_name = os.environ.get("CUSTOM_LLM_MODEL", "")
-                custom_api_key = os.environ.get("CUSTOM_LLM_API_KEY", "")
-                custom_api_format = os.environ.get("CUSTOM_LLM_API_FORMAT", "openai")
-
-                # 根据 api_format 决定 langchain model_provider
-                model_provider = {
-                    "openai": "openai",
-                    "anthropic": "anthropic",
-                    "custom": "openai",
-                }.get(custom_api_format, "openai")
-
-                # 构建 LLM 配置
-                create_kwargs: dict[str, Any] = {
-                    "model": custom_model_name or ("claude-sonnet-4-20250514" if model_provider == "anthropic" else "default"),
-                    "model_provider": model_provider,
-                    "temperature": 0,
-                }
-                if custom_api_key:
-                    create_kwargs["api_key"] = custom_api_key
-                # Anthropic 也支持自定义 base_url（中转站）
-                if model_provider == "anthropic" and custom_base_url:
-                    create_kwargs["base_url"] = custom_base_url
-
-                model = LLMFactory.create(**create_kwargs)
-                self._log(task, f"custom:{custom_base_url}", "custom_endpoint", True)
+                model = LLMFactory.from_api_config(user_config)
+                label = f"user:{user_config.name or user_config.id}"
+                self._log(task, label, "user_config", True)
                 if on_select:
-                    on_select("custom")
-                return model, "custom"
+                    on_select(label)
+                return model, label
             except Exception as exc:
-                logger.warning("Custom LLM endpoint failed: %s; falling back to built-in router", exc)
-                self._log(task, "custom", f"custom_error:{exc!s}"[:80], False)
+                logger.warning("User config for task %s failed: %s; falling back", task, exc)
+                self._log(task, "user_config", f"user_config_error:{exc!s}"[:80], False)
 
+        # ── 2. 兜底：任意一个用户配置 ──
+        any_config = get_any_enabled_config()
+        if any_config:
+            try:
+                model = LLMFactory.from_api_config(any_config)
+                label = f"user:{any_config.name or any_config.id}"
+                self._log(task, label, "any_user_config", True)
+                if on_select:
+                    on_select(label)
+                return model, label
+            except Exception as exc:
+                logger.warning("Any user config failed: %s; falling back to yaml", exc)
+                self._log(task, "any_user_config", f"error:{exc!s}"[:80], False)
+
+        # ── 3. override profile ──
         if override:
             try:
                 model = LLMFactory.from_profile(override)
@@ -151,25 +135,22 @@ class ModelRouter:
             except Exception as exc:
                 logger.warning("Router override %s failed: %s; trying defaults", override, exc)
 
+        # ── 4. yaml 路由表 ──
         route = self.routes.get(task)
         if route is None:
+            from config.loader import get_config
             cfg = get_config()
             default = cfg.llm.default_profile
             model = LLMFactory.from_profile(default)
-            self._log(task, default, "unknown_task", True)
+            self._log(task, default, "unknown_task_fallback", True)
             if on_select:
                 on_select(default)
             return model, default
 
-        attempted: list[str] = []
         for candidate in [route.primary, *route.fallbacks]:
-            attempted.append(candidate)
-            if not self._profile_available(candidate):
-                self._log(task, candidate, "skipped_no_key", False)
-                continue
             try:
                 model = LLMFactory.from_profile(candidate)
-                self._log(task, candidate, "selected", True)
+                self._log(task, candidate, "yaml_selected", True)
                 if on_select:
                     on_select(candidate)
                 return model, candidate
@@ -178,7 +159,8 @@ class ModelRouter:
                 self._log(task, candidate, f"error:{exc!s}"[:80], False)
                 continue
 
-        # 最后兜底：默认 profile（不带可用性检查；保证总有 LLM 实例返回）
+        # 最终兜底
+        from config.loader import get_config
         cfg = get_config()
         default = cfg.llm.default_profile
         model = LLMFactory.from_profile(default)
@@ -186,19 +168,6 @@ class ModelRouter:
         if on_select:
             on_select(default)
         return model, default
-
-    def _profile_available(self, profile_name: str) -> bool:
-        cfg = get_config()
-        profile = cfg.llm.profiles.get(profile_name)
-        if profile is None:
-            return False
-        env = profile.api_key_env
-        # 没显式 api_key_env 的 profile（如 deepseek）走 provider 默认
-        if not env:
-            return any(
-                get_credential(k) for k in ("DEEPSEEK_API_KEY", "OPENAI_API_KEY")
-            )
-        return bool(get_credential(env))
 
     def _log(self, task: str, profile: str, reason: str, success: bool) -> None:
         self.routing_log.append({

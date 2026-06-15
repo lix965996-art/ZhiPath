@@ -54,15 +54,15 @@ class TestLearningProfileService:
 
     def test_extract_topics(self):
         from services.profile.service import LearningProfileService
-        topics = LearningProfileService._extract_topics("我想学习机器学习和深度学习")
-        assert "机器学习" in topics
-        assert "深度学习" in topics
+        topics = LearningProfileService._extract_topics("我想学习操作系统和计算机网络")
+        assert "操作系统" in topics
+        assert "计算机网络" in topics
 
     def test_extract_goal(self):
         from services.profile.service import LearningProfileService
-        goal = LearningProfileService._extract_goal("我想学会Python编程")
+        goal = LearningProfileService._extract_goal("我想学会408操作系统")
         assert "想" in goal
-        assert "Python" in goal
+        assert "408" in goal
 
     def test_infer_level_beginner(self):
         from services.profile.service import LearningProfileService
@@ -76,7 +76,7 @@ class TestLearningProfileService:
 
     def test_extract_weak_points(self):
         from services.profile.service import LearningProfileService
-        weak = LearningProfileService._extract_weak_points("我分不清监督学习和无监督学习")
+        weak = LearningProfileService._extract_weak_points("我分不清死锁和饥饿")
         assert len(weak) > 0
 
     def test_extract_constraints(self):
@@ -151,10 +151,10 @@ class TestRAGPipeline:
         from services.rag.pipeline import RAGPipeline
 
         rag = RAGPipeline()
-        results = rag._search_lexical("监督学习和无监督学习有什么区别", k=3)
+        results = rag._search_lexical("死锁的四个必要条件是什么", k=3)
 
         assert results
-        assert any("监督学习" in item.title for item in results)
+        assert any("死锁" in item.title or "操作系统" in item.title for item in results)
         assert all(item.retrieval_mode == "lexical" for item in results)
 
     @pytest.mark.asyncio
@@ -271,7 +271,7 @@ class TestModuleSchemas:
     def test_skill_requirements_validation(self):
         from modules.skill_gap.schemas import SkillRequirement, SkillRequirements
         reqs = SkillRequirements(skill_requirements=[
-            SkillRequirement(name="Python", required_level="beginner"),
+            SkillRequirement(name="死锁", required_level="beginner"),
             SkillRequirement(name="线性代数", required_level="intermediate"),
         ])
         assert len(reqs.skill_requirements) == 2
@@ -295,9 +295,9 @@ class TestModuleSchemas:
                 title="基础入门",
                 abstract="学习基本概念",
                 if_learned=False,
-                associated_skills=["Python"],
+                associated_skills=["死锁"],
                 desired_outcome_when_completed=[
-                    DesiredOutcome(name="Python", level="beginner")
+                    DesiredOutcome(name="死锁", level="beginner")
                 ],
             )
         ])

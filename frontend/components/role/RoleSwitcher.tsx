@@ -1,12 +1,11 @@
 "use client";
 
-import { GraduationCap, Sparkles, User } from "lucide-react";
+import { Sparkles, User } from "lucide-react";
 import { type Role, useRole } from "@/context/RoleContext";
 
 const OPTIONS: Array<{ value: Role; label: string; icon: typeof User; hint: string }> = [
   { value: "student", label: "学生", icon: User, hint: "聚焦学习场景" },
-  { value: "teacher", label: "教师", icon: GraduationCap, hint: "聚焦班级管理" },
-  { value: "showcase", label: "演示", icon: Sparkles, hint: "解锁全部炫技" },
+  { value: "showcase", label: "演示", icon: Sparkles, hint: "解锁全部面板，适合答辩" },
 ];
 
 export function RoleSwitcher({ compact = false }: { compact?: boolean }) {

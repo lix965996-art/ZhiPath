@@ -11,14 +11,12 @@ import {
   Brain,
   CalendarDays,
   Compass,
-  GraduationCap,
   LayoutDashboard,
   Library,
   Menu,
   MessageSquare,
   PanelRight,
   PenLine,
-  Rocket,
   Route,
   Settings,
   Sparkles,
@@ -39,16 +37,12 @@ import {
 // 重量级组件 → 懒加载，不阻塞首屏和路由切换
 const AgentWorkflowGraph = dynamic(() => import("@/components/agent/AgentWorkflowGraph").then(m => ({ default: m.AgentWorkflowGraph })), { ssr: false, loading: () => null });
 const AgentMessageFeed = dynamic(() => import("@/components/agent/AgentMessageFeed").then(m => ({ default: m.AgentMessageFeed })), { ssr: false, loading: () => null });
-const AutoTutorLoopVisual = dynamic(() => import("@/components/visual/AutoTutorLoopVisual").then(m => ({ default: m.AutoTutorLoopVisual })), { ssr: false, loading: () => null });
 const ProfileEvidencePanel = dynamic(() => import("@/components/profile/ProfileEvidencePanel").then(m => ({ default: m.ProfileEvidencePanel })), { ssr: false, loading: () => null });
 const RightTabPanel = dynamic(() => import("@/components/chat/RightTabPanel").then(m => ({ default: m.RightTabPanel })), { ssr: false, loading: () => null });
 const PomodoroTimer = dynamic(() => import("@/components/pomodoro/PomodoroTimer").then(m => ({ default: m.PomodoroTimer })), { ssr: false, loading: () => null });
 import { SettingsButton } from "@/components/settings/SettingsButton";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { RoleSwitcher } from "@/components/role/RoleSwitcher";
 import { useRole } from "@/context/RoleContext";
-const ContestDemoPanel = dynamic(() => import("@/components/demo/ContestDemoPanel").then(m => ({ default: m.ContestDemoPanel })), { ssr: false, loading: () => null });
-import { contestDemoPrompt } from "@/components/demo/ContestDemoPanel";
 const ExamResourceCard = dynamic(() => import("@/components/exam/ExamResourceCard").then(m => ({ default: m.ExamResourceCard })), { ssr: false, loading: () => null });
 const ResourcePackageCard = dynamic(() => import("@/components/resources/ResourcePackageCard").then(m => ({ default: m.ResourcePackageCard })), { ssr: false, loading: () => null });
 const ExplainerPlayer = dynamic(() => import("@/components/explainer/ExplainerPlayer").then(m => ({ default: m.ExplainerPlayer })), { ssr: false, loading: () => null });
@@ -56,7 +50,7 @@ const LearningLoopVisual = dynamic(() => import("@/components/visual/LearningLoo
 const KnowledgeOrbital3D = dynamic(() => import("@/components/visual/KnowledgeOrbital3D").then(m => ({ default: m.KnowledgeOrbital3D })), { ssr: false, loading: () => null });
 const Orbital3DStage = dynamic(() => import("@/components/visual/orbital3d/Orbital3DStage").then(m => ({ default: m.Orbital3DStage })), { ssr: false, loading: () => null });
 const LiveTelemetryHUD = dynamic(() => import("@/components/visual/LiveTelemetryHUD").then(m => ({ default: m.LiveTelemetryHUD })), { ssr: false, loading: () => null });
-const NextActionCard = dynamic(() => import("@/components/visual/NextActionCard").then(m => ({ default: m.NextActionCard })), { ssr: false, loading: () => null });
+const BrandTree = dynamic(() => import("@/components/visual/BrandTree").then(m => ({ default: m.BrandTree })), { ssr: false, loading: () => null });
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput, type CapabilityOption } from "./ChatInput";
 
@@ -75,12 +69,6 @@ const capabilities: CapabilityOption[] = [
     icon: Wand2,
   },
   {
-    id: "auto_tutor",
-    label: "Auto-Tutor 闭环",
-    description: "诊断→生成→测验→评估→重规划，7 阶段全跑",
-    icon: Rocket,
-  },
-  {
     id: "debate",
     label: "多智能体辩论",
     description: "X vs Y 类问题。正方/反方/裁判 2 轮辩出结论",
@@ -96,30 +84,25 @@ const capabilities: CapabilityOption[] = [
 
 const quickPromptsByCapability: Record<string, string[]> = {
   agentic: [
-    "我刚学完线性回归，接下来该学什么？根据我的画像帮我规划",
-    "帮我查一下我现在掌握得怎么样，最弱的是什么",
-    "我想 2 周入门机器学习，从我现状出发安排一下",
-    "今天该复习什么？给我一份当下最该看的内容",
+    "我刚学完操作系统死锁，接下来该刷哪些 408 题？",
+    "帮我查一下我现在 408 掌握得怎么样，最弱的是哪一科",
+    "我想 2 周强化 408 操作系统和计组，从我现状出发安排一下",
+    "今天 408 该复习什么？给我一份当下最该看的内容",
   ],
   resource_gen: [
-    "请生成 5 道 Python 基础选择题，主题是变量、条件判断和循环，做成可打印测试卷，并提供 Word 和 PDF 打印入口",
-    "基于我薄弱的循环和条件判断，生成一份微讲义、练习题和复习卡片",
-    "生成一份监督学习入门资源包，包含知识结构、测验题和错题反馈建议",
-  ],
-  auto_tutor: [
-    "我想 2 周入门机器学习，请帮我跑一次完整的学习闭环",
-    "我 Python 基础一般，想系统学习深度学习，帮我跑闭环并定位薄弱点",
-    "围绕动态规划，给我一次完整的诊断 + 资源 + 测验 + 复盘",
+    "请生成 5 道 408 操作系统选择题，主题是进程管理和死锁，做成可打印测试卷，并提供 Word 和 PDF 打印入口",
+    "基于我薄弱的 Cache 映射方式，生成一份微讲义、练习题和复习卡片",
+    "生成一份 408 计算机网络运输层资源包，包含知识结构、测验题和错题反馈建议",
   ],
   debate: [
-    "刷题和看书谁更适合机器学习入门？让 AI 们辩论一下",
-    "我应该先学线性代数还是先动手做项目？正反方辩",
-    "对 0 基础学算法，自顶向下还是自底向上更好？",
+    "帮我辨析进程和线程，按 408 选择题易错点来讲",
+    "直接映射、全相联、组相联三种 Cache 映射方式怎么区分？",
+    "死锁预防、死锁避免、死锁检测有什么区别？",
   ],
   explainer: [
-    "讲一下反向传播怎么工作",
-    "用动画讲清楚 K-Means 的迭代过程",
-    "演示 Transformer 注意力机制是怎么算的",
+    "讲一下死锁产生的四个必要条件",
+    "用动画讲清楚 Cache 直接映射、全相联和组相联",
+    "演示 TCP 三次握手和四次挥手的过程",
   ],
 };
 
@@ -139,7 +122,6 @@ const stageLabelMap: Record<string, string> = {
 const capabilityWorkflows: Record<string, string[]> = {
   agentic: ["理解意图", "决定工具", "并行执行", "总结回答"],
   resource_gen: ["检索材料", "生成讲义", "生成练习", "沉淀复习"],
-  auto_tutor: ["目标诊断", "并行生成", "试卷+自评", "更新画像", "重规划"],
   debate: ["正方一辩", "反方一驳", "正方二辩", "反方二驳", "裁判终审"],
 };
 
@@ -248,14 +230,6 @@ function ChatPanelInner() {
     sendMessage(content, capability);
   };
 
-  const handleRunContestDemo = (prompt?: string, capability?: string) => {
-    const effectivePrompt = prompt ?? contestDemoPrompt;
-    const effectiveCapability = capability ?? "resource_gen";
-    const cap = capabilities.find((c) => c.id === effectiveCapability);
-    if (cap) setSelectedCapability(cap);
-    handleSend(effectivePrompt, effectiveCapability);
-  };
-
   const handleNewSession = () => {
     newSession();
     setProfile(null);
@@ -348,8 +322,7 @@ function ChatPanelInner() {
             { slot: "nav.path" as const, href: "/path", icon: Route, label: "学习路径" },
             { slot: "nav.resources" as const, href: "/resources", icon: Boxes, label: "资源工坊" },
             { slot: "nav.knowledge" as const, href: "/knowledge", icon: Library, label: "知识库" },
-            { slot: "nav.dashboard" as const, href: "/dashboard", icon: LayoutDashboard, label: "学习仪表盘" },
-            { slot: "nav.classroom" as const, href: "/classroom", icon: GraduationCap, label: "班级视图" },
+            { slot: "nav.analytics" as const, href: "/dashboard", icon: LayoutDashboard, label: "学习分析" },
             { slot: "nav.overview" as const, href: "/overview", icon: LayoutDashboard, label: "系统总览" },
           ]
             .filter((n) => shouldShow(n.slot))
@@ -364,16 +337,6 @@ function ChatPanelInner() {
               </Link>
             ))}
         </nav>
-
-        {shouldShow("demo.panel") ? (
-          <div className="px-4">
-            <ContestDemoPanel
-              compact
-              disabled={state.isStreaming}
-              onRun={handleRunContestDemo}
-            />
-          </div>
-        ) : null}
 
         {showSessions ? (
           <div className="mt-4 flex-1 overflow-y-auto px-3">
@@ -481,7 +444,6 @@ function ChatPanelInner() {
             ) : null}
           </div>
           <div className="flex items-center gap-1.5">
-            <RoleSwitcher compact />
             <SettingsButton />
             <ThemeToggle compact />
             <button
@@ -504,6 +466,24 @@ function ChatPanelInner() {
             <div className="lf-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
               {state.messages.length === 0 && !state.isStreaming && (
                 <div className="mx-auto flex max-w-4xl flex-col py-2">
+                  <div
+                    className="relative mb-4 overflow-hidden rounded-2xl border border-[var(--border)]"
+                    style={{
+                      background:
+                        "radial-gradient(130% 120% at 72% 0%, rgba(124,58,237,0.12), transparent 55%), radial-gradient(120% 120% at 18% 100%, rgba(59,130,246,0.10), transparent 50%), var(--card)",
+                    }}
+                  >
+                    <BrandTree className="h-[200px] w-full" />
+                    <div className="pointer-events-none absolute left-5 top-5">
+                      <div className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">
+                        ZhiPath · 知识之树
+                      </div>
+                      <div className="mt-0.5 max-w-[260px] text-[12px] leading-5 text-[var(--muted-foreground)]">
+                        你的认知正在生长 · 学得越多，树越枝繁叶茂
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="mb-3">
                     <h2 className="max-w-2xl text-[20px] font-semibold leading-tight text-[var(--foreground)] md:text-[22px]">
                       今天想学什么？
@@ -512,11 +492,6 @@ function ChatPanelInner() {
                       输入目标、问题或教材主题，系统会保留上下文并生成下一步学习动作。
                     </p>
                   </div>
-
-                  <NextActionCard
-                    sessionId={state.sessionId}
-                    onPick={(p, c) => handleRunContestDemo(p, c)}
-                  />
 
                   <div className="grid gap-2 sm:grid-cols-2">
                     {quickPrompts.slice(0, 4).map((prompt, idx) => {

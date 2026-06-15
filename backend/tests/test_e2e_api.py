@@ -7,7 +7,6 @@
 - GET /api/v1/mastery/{sid} BKT 快照
 - GET /api/v1/kg/{sid} 知识图谱
 - GET /api/v1/review/{sid}/calendar FSRS 日历
-- GET /api/v1/classroom/overview 班级聚合
 - GET /api/v1/router 多模型路由表
 - GET /api/v1/capabilities 能力列表
 - POST /api/v1/mcp/ MCP JSON-RPC (tools/list)
@@ -168,26 +167,15 @@ def test_dkt_fit(client, demo_sid):
     r = client.post(
         f"/api/v1/dkt/{demo_sid}/fit",
         json={"observations": [
-            {"label": "梯度下降", "correct": True},
-            {"label": "反向传播", "correct": False},
-            {"label": "梯度下降", "correct": True},
+            {"label": "进程同步", "correct": True},
+            {"label": "死锁", "correct": False},
+            {"label": "进程同步", "correct": True},
         ]},
     )
     assert r.status_code == 200
     body = r.json()
     assert "predictions" in body
-    assert "梯度下降" in body["predictions"]
-
-
-# ---------- Classroom ----------
-
-
-def test_classroom_overview(client):
-    r = client.get("/api/v1/classroom/overview")
-    assert r.status_code == 200
-    body = r.json()
-    assert "students" in body
-    assert "aggregate" in body
+    assert "进程同步" in body["predictions"]
 
 
 # ---------- MCP ----------
@@ -282,7 +270,7 @@ def test_pomodoro_post(client, demo_sid):
             "session_id": demo_sid,
             "duration_seconds": 1500,
             "type": "focus",
-            "topic": "梯度下降",
+            "topic": "死锁",
             "completed": True,
         },
     )

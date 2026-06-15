@@ -111,14 +111,14 @@ export function LearningLoopVisual({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="mb-5 overflow-hidden rounded-[34px] border border-[rgba(0,122,255,0.18)] bg-[var(--card)] shadow-[var(--shadow-soft)] backdrop-blur"
+      className="mb-5 overflow-hidden rounded-[34px] border border-[rgba(59,130,246,0.18)] bg-[var(--card)] shadow-[var(--shadow-soft)] backdrop-blur"
     >
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_240px]">
         {/* SVG 循环图 */}
-        <div className="relative min-h-[220px] overflow-hidden bg-[linear-gradient(145deg,rgba(0,122,255,0.075),rgba(255,255,255,0.74)_52%,rgba(52,199,89,0.045))] p-4">
+        <div className="relative min-h-[220px] overflow-hidden bg-[linear-gradient(145deg,rgba(59,130,246,0.075),rgba(255,255,255,0.74)_52%,rgba(52,199,89,0.045))] p-4">
           {/* 背景圆环 */}
           <motion.div
-            className="absolute left-1/2 top-1/2 h-[210px] w-[210px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[rgba(0,122,255,0.08)]"
+            className="absolute left-1/2 top-1/2 h-[210px] w-[210px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[rgba(59,130,246,0.08)]"
             animate={{ scale: [1, 1.03, 1] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -128,7 +128,7 @@ export function LearningLoopVisual({
           <svg viewBox="0 0 420 300" className="absolute inset-0 h-full w-full">
             <defs>
               <linearGradient id="lf-loop-gradient" x1="0" x2="1" y1="0" y2="1">
-                <stop offset="0%" stopColor="rgba(0,122,255,0.72)" />
+                <stop offset="0%" stopColor="rgba(59,130,246,0.72)" />
                 <stop offset="50%" stopColor="rgba(90,200,250,0.62)" />
                 <stop offset="100%" stopColor="rgba(52,199,89,0.52)" />
               </linearGradient>
@@ -137,7 +137,7 @@ export function LearningLoopVisual({
             <path
               d="M210 48 C315 54 370 118 338 190 C307 259 116 266 82 190 C50 118 105 54 210 48"
               fill="none"
-              stroke="rgba(0,122,255,0.12)"
+              stroke="rgba(59,130,246,0.12)"
               strokeWidth="2"
             />
             {/* 流动路径 */}
@@ -155,11 +155,11 @@ export function LearningLoopVisual({
 
           {/* 中心核心 */}
           <motion.div
-            className="absolute left-1/2 top-1/2 flex h-[108px] w-[108px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-[30px] border border-[var(--border)] bg-[var(--card)] text-center shadow-[0_18px_50px_rgba(0,122,255,0.14)]"
+            className="absolute left-1/2 top-1/2 flex h-[108px] w-[108px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-[30px] border border-[var(--border)] bg-[var(--card)] text-center shadow-[0_18px_50px_rgba(59,130,246,0.14)]"
             animate={{ scale: [1, 1.06, 1] }}
             transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
           >
-            <div className="mb-1.5 flex h-9 w-9 items-center justify-center rounded-2xl bg-[rgba(0,122,255,0.1)] text-[var(--primary)]">
+            <div className="mb-1.5 flex h-9 w-9 items-center justify-center rounded-2xl bg-[rgba(59,130,246,0.1)] text-[var(--primary)]">
               <AnimatePresence mode="wait">
                 {isStreaming ? (
                   <motion.div
@@ -213,17 +213,17 @@ export function LearningLoopVisual({
                 animate={{
                   scale: isSelected ? 1.05 : 1,
                   boxShadow: isSelected
-                    ? "0 0 0 4px rgba(0,122,255,0.08), 0 8px 24px rgba(0,122,255,0.12)"
+                    ? "0 0 0 4px rgba(59,130,246,0.08), 0 8px 24px rgba(59,130,246,0.12)"
                     : status === "running"
-                      ? "0 0 0 5px rgba(0,122,255,0.08), 0 12px 28px rgba(0,122,255,0.12)"
+                      ? "0 0 0 5px rgba(59,130,246,0.08), 0 12px 28px rgba(59,130,246,0.12)"
                       : "0 2px 8px rgba(0,0,0,0.04)",
                   borderColor: isSelected
-                    ? "rgba(0,122,255,0.36)"
+                    ? "rgba(59,130,246,0.36)"
                     : "var(--border)",
                 }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={`absolute flex h-[62px] w-[62px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-[20px] border bg-[var(--card)] text-center backdrop-blur transition-colors ${
-                  status === "running" ? "border-[rgba(0,122,255,0.3)]" : ""
+                  status === "running" ? "border-[rgba(59,130,246,0.3)]" : ""
                 }`}
                 style={{ left: `${node.x}%`, top: `${node.y}%` }}
                 whileHover={{ scale: 1.08, y: -2 }}
@@ -234,7 +234,7 @@ export function LearningLoopVisual({
                     status === "done"
                       ? "bg-[rgba(52,199,89,0.14)] text-emerald-700"
                       : status === "running"
-                        ? "bg-[rgba(0,122,255,0.12)] text-[var(--primary)]"
+                        ? "bg-[rgba(59,130,246,0.12)] text-[var(--primary)]"
                         : status === "ready"
                           ? "bg-[rgba(255,149,0,0.14)] text-amber-700"
                           : "bg-[var(--muted)] text-[var(--muted-foreground)]"
@@ -261,7 +261,7 @@ export function LearningLoopVisual({
         {/* 右侧信息面板 */}
         <div className="flex flex-col justify-between border-l border-[var(--border)] bg-[var(--card-solid)] p-4">
           <div>
-            <div className="mb-2.5 inline-flex items-center gap-2 rounded-full bg-[rgba(0,122,255,0.09)] px-2.5 py-1 text-[12px] font-medium text-[var(--primary)]">
+            <div className="mb-2.5 inline-flex items-center gap-2 rounded-full bg-[rgba(59,130,246,0.09)] px-2.5 py-1 text-[12px] font-medium text-[var(--primary)]">
               <Sparkles size={13} />
               当前状态
             </div>
@@ -309,7 +309,7 @@ export function LearningLoopVisual({
               onClick={onRun}
               disabled={isStreaming}
               className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--primary)] px-4 py-2.5 text-[13px] font-medium text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-              whileHover={{ scale: 1.02, boxShadow: "0 8px 24px rgba(0,122,255,0.25)" }}
+              whileHover={{ scale: 1.02, boxShadow: "0 8px 24px rgba(59,130,246,0.25)" }}
               whileTap={{ scale: 0.98 }}
             >
               <Play size={15} />

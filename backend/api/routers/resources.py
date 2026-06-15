@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
+from services.code_lab.runner import run_c_code
+from services.code_lab.verify import compare_outputs
 from services.exam.store import ExamStore
 from services.quiz.quiz_store import QuizStore
 from services.resource_package.store import ResourcePackageStore
@@ -13,6 +17,12 @@ router = APIRouter(prefix="/api/v1/resources", tags=["resources"])
 package_store = ResourcePackageStore()
 quiz_store = QuizStore()
 exam_store = ExamStore()
+
+
+class CodeLabRunRequest(BaseModel):
+    code: str = Field(min_length=1, description="学生提交的 C 源码")
+    stdin: str = Field("", description="喂给程序 stdin 的内容，多数 408 题为空")
+    expected_output: str = Field("", description="正确补全后的期望输出；非空时后端做逻辑比对")
 
 
 @router.get("")
@@ -50,3 +60,22 @@ async def get_resource_package(package_id: str) -> dict[str, Any]:
     if not package:
         raise HTTPException(status_code=404, detail="资源包不存在")
     return package
+
+
+@router.post("/code-lab/run")
+async def run_code_lab(req: CodeLabRunRequest) -> dict[str, Any]:
+    """编译并运行学生提交的 C 代码，返回实际输出；若给了 expected_output 则做逻辑比对。
+
+    真正的「逻辑判定」= 学生程序的实际 stdout 与期望输出一致。
+    没有 C 编译器时返回 reason="no_compiler"，前端降级为仅结构检查。
+    """
+    result = await asyncio.to_thread(run_c_code, req.code, req.stdin)
+    payload = result.to_dict()
+    if req.expected_output and result.ran:
+        cmp = compare_outputs(req.expected_output, result.stdout)
+        payload["matched_expected"] = cmp.passed
+        payload["diff"] = cmp.diff
+    else:
+        payload["matched_expected"] = False
+        payload["diff"] = []
+    return payload
