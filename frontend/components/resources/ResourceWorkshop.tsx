@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   BookOpen,
+  Boxes,
   Code2,
   Database,
   Film,
@@ -23,6 +24,7 @@ import {
   type LearningResourcePackage,
 } from "@/lib/api";
 import { Suspense } from "react";
+import { LearningShell } from "@/components/learning/LearningShell";
 
 // ── Sub-views ──────────────────────────────────────────────────────
 import { LectureView } from "./LectureView";
@@ -135,28 +137,42 @@ function ResourceWorkshopInner() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 size={24} className="animate-spin text-[#5d6e57]" />
-      </div>
+      <LearningShell>
+        <div className="flex h-[60vh] items-center justify-center">
+          <Loader2 size={24} className="animate-spin text-[var(--primary)]" />
+        </div>
+      </LearningShell>
     );
   }
 
   if (!selected) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-3">
-        <Sparkles size={28} className="text-[var(--primary)]" />
-        <p className="text-[14px] font-medium">还没有资源包</p>
-        <p className="text-[12px] text-[var(--muted-foreground)]">回到学习路径页生成</p>
-      </div>
+      <LearningShell>
+        <div className="flex h-[60vh] flex-col items-center justify-center gap-3">
+          <Boxes size={28} className="text-[var(--primary)]" />
+          <p className="text-[14px] font-medium">还没有生成过学习资源</p>
+          <p className="text-[12px] text-[var(--muted-foreground)]">
+            完成学习诊断后，可按薄弱知识点生成资源包。
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push("/diagnostic")}
+            className="rounded-xl bg-[var(--primary)] px-4 py-2 text-[12px] font-semibold text-white"
+          >
+            先完成诊断
+          </button>
+        </div>
+      </LearningShell>
     );
   }
 
   const activeTabDef = activeTab ? TABS.find((tab) => tab.key === activeTab) : null;
 
   return (
-    <main className="min-h-screen bg-[var(--background)]">
+    <LearningShell fullWidth>
+      <div className="min-h-[calc(100vh-3.5rem)] bg-[var(--background)]">
       {/* ── Top Bar ── */}
-      <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur-xl">
+      <header className="sticky top-14 z-10 border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur-xl">
         <div className="mx-auto flex min-h-[72px] max-w-7xl items-center justify-between gap-4 px-5">
           <div className="flex min-w-0 items-center gap-3">
             <button
@@ -200,7 +216,7 @@ function ResourceWorkshopInner() {
       </header>
 
       {/* ── Tab Bar ── */}
-      <div className="sticky top-[72px] z-20 border-b border-[var(--border)] bg-[var(--surface)]/92 backdrop-blur-xl">
+      <div className="sticky top-[128px] z-10 border-b border-[var(--border)] bg-[var(--surface)]/92 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-5 py-3">
           {TABS.map((t) => {
             const isActive = activeTab === t.key;
@@ -234,7 +250,8 @@ function ResourceWorkshopInner() {
           router.push("/chat?p=" + encodeURIComponent(prompt));
         }} />
       </div>
-    </main>
+      </div>
+    </LearningShell>
   );
 }
 

@@ -60,27 +60,29 @@ export function ChatInput({
   return (
     <div className="shrink-0 border-t border-[var(--border)] bg-white/55 px-3 py-3 backdrop-blur-xl md:px-6 md:py-4">
       <div className="mx-auto max-w-4xl rounded-[22px] border border-[var(--border)] bg-white/90 p-2 shadow-[var(--shadow-soft)]">
-        <div className="hide-scrollbar mb-2 flex gap-1 overflow-x-auto rounded-2xl bg-[var(--muted)] p-1">
-          {capabilities.map((capability) => {
-            const active = selectedCapability.id === capability.id;
-            return (
-              <button
-                key={capability.id}
-                type="button"
-                onClick={() => onSelectCapability(capability)}
-                className={`flex shrink-0 items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[12px] font-medium transition active:scale-95 ${
-                  active
-                    ? "bg-white text-[var(--foreground)] shadow-sm"
-                    : "text-[var(--muted-foreground)] hover:bg-white/70 hover:text-[var(--foreground)]"
-                }`}
-                title={capability.description}
-              >
-                <capability.icon size={14} />
-                {capability.label}
-              </button>
-            );
-          })}
-        </div>
+        {capabilities.length > 1 ? (
+          <div className="hide-scrollbar mb-2 flex gap-1 overflow-x-auto rounded-2xl bg-[var(--muted)] p-1">
+            {capabilities.map((capability) => {
+              const active = selectedCapability.id === capability.id;
+              return (
+                <button
+                  key={capability.id}
+                  type="button"
+                  onClick={() => onSelectCapability(capability)}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[12px] font-medium transition active:scale-95 ${
+                    active
+                      ? "bg-white text-[var(--foreground)] shadow-sm"
+                      : "text-[var(--muted-foreground)] hover:bg-white/70 hover:text-[var(--foreground)]"
+                  }`}
+                  title={capability.description}
+                >
+                  <capability.icon size={14} />
+                  {capability.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
         <div className="flex items-end gap-2">
           <BrandMark variant="input" size={36} className="hidden sm:inline-flex" />
@@ -90,7 +92,7 @@ export function ChatInput({
             onChange={(event) => setValue(event.target.value)}
             onKeyDown={handleKeyDown}
             onInput={handleInput}
-            placeholder={`向 ${selectedCapability.label} 输入学习目标、题目或资源需求...`}
+            placeholder="输入你没弄懂的知识点、题目或具体步骤..."
             disabled={disabled}
             rows={1}
             className="min-h-9 flex-1 resize-none border-0 bg-transparent px-1 py-1.5 text-[14px] leading-6 text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)] disabled:opacity-60"

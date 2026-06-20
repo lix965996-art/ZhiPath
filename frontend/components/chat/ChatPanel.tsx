@@ -2,32 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
   BarChart3,
   BookOpen,
-  Boxes,
-  Brain,
   CalendarDays,
-  Compass,
-  LayoutDashboard,
-  Library,
   Menu,
   MessageSquare,
   PanelRight,
-  PenLine,
-  Route,
-  Settings,
-  Sparkles,
-  Target,
-  UserRound,
-  Wand2,
 } from "lucide-react";
-import { BrandMark } from "@/components/brand/BrandMark";
 import { ChatProvider, useChat } from "@/context/ChatContext";
 import {
-  apiUrl,
   apiFetch,
   getLearningProfile,
   listKnowledgeDocuments,
@@ -35,75 +20,35 @@ import {
   type LearningProfile,
 } from "@/lib/api";
 // 重量级组件 → 懒加载，不阻塞首屏和路由切换
-const AgentWorkflowGraph = dynamic(() => import("@/components/agent/AgentWorkflowGraph").then(m => ({ default: m.AgentWorkflowGraph })), { ssr: false, loading: () => null });
-const AgentMessageFeed = dynamic(() => import("@/components/agent/AgentMessageFeed").then(m => ({ default: m.AgentMessageFeed })), { ssr: false, loading: () => null });
-const ProfileEvidencePanel = dynamic(() => import("@/components/profile/ProfileEvidencePanel").then(m => ({ default: m.ProfileEvidencePanel })), { ssr: false, loading: () => null });
 const RightTabPanel = dynamic(() => import("@/components/chat/RightTabPanel").then(m => ({ default: m.RightTabPanel })), { ssr: false, loading: () => null });
-const PomodoroTimer = dynamic(() => import("@/components/pomodoro/PomodoroTimer").then(m => ({ default: m.PomodoroTimer })), { ssr: false, loading: () => null });
 import { SettingsButton } from "@/components/settings/SettingsButton";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { useRole } from "@/context/RoleContext";
 const ExamResourceCard = dynamic(() => import("@/components/exam/ExamResourceCard").then(m => ({ default: m.ExamResourceCard })), { ssr: false, loading: () => null });
 const ResourcePackageCard = dynamic(() => import("@/components/resources/ResourcePackageCard").then(m => ({ default: m.ResourcePackageCard })), { ssr: false, loading: () => null });
 const ExplainerPlayer = dynamic(() => import("@/components/explainer/ExplainerPlayer").then(m => ({ default: m.ExplainerPlayer })), { ssr: false, loading: () => null });
-const LearningLoopVisual = dynamic(() => import("@/components/visual/LearningLoopVisual").then(m => ({ default: m.LearningLoopVisual })), { ssr: false, loading: () => null });
-const KnowledgeOrbital3D = dynamic(() => import("@/components/visual/KnowledgeOrbital3D").then(m => ({ default: m.KnowledgeOrbital3D })), { ssr: false, loading: () => null });
-const Orbital3DStage = dynamic(() => import("@/components/visual/orbital3d/Orbital3DStage").then(m => ({ default: m.Orbital3DStage })), { ssr: false, loading: () => null });
-const LiveTelemetryHUD = dynamic(() => import("@/components/visual/LiveTelemetryHUD").then(m => ({ default: m.LiveTelemetryHUD })), { ssr: false, loading: () => null });
 const BrandTree = dynamic(() => import("@/components/visual/BrandTree").then(m => ({ default: m.BrandTree })), { ssr: false, loading: () => null });
 import { MessageBubble } from "./MessageBubble";
 import { ChatVideoCard } from "./ChatVideoCard";
 import { ChatInput, type CapabilityOption } from "./ChatInput";
+import { AppSidebar } from "@/components/layout/AppSidebar";
 
-// 主界面只露 4 个能力。chat/goal/learning 后端仍注册，由 agentic 自动路由。
+// 聊天页只负责导师对话。学习任务、资源和实验通过独立页面进入。
 const capabilities: CapabilityOption[] = [
   {
     id: "agentic",
-    label: "智能路由 ✨",
-    description: "AI 自主调用：诊断 / 检索 / 路径规划，问什么都先选它",
-    icon: Sparkles,
-  },
-  {
-    id: "resource_gen",
-    label: "资源生成",
-    description: "出题 / 讲义 / 试卷 / 闪卡 / 思维导图 / 代码 / 音频，一键打包",
-    icon: Wand2,
-  },
-  {
-    id: "debate",
-    label: "多智能体辩论",
-    description: "X vs Y 类问题。正方/反方/裁判 2 轮辩出结论",
+    label: "导师对话",
+    description: "围绕当前学习内容提问、追问和纠错",
     icon: MessageSquare,
-  },
-  {
-    id: "explainer",
-    label: "动画讲解",
-    description: "渐进 Mermaid + 讯飞 TTS 旁白 = 短视频式答疑",
-    icon: Brain,
   },
 ];
 
 const quickPromptsByCapability: Record<string, string[]> = {
   agentic: [
-    "我刚学完操作系统死锁，接下来该刷哪些 408 题？",
-    "帮我查一下我现在 408 掌握得怎么样，最弱的是哪一科",
-    "我想 2 周强化 408 操作系统和计组，从我现状出发安排一下",
-    "今天 408 该复习什么？给我一份当下最该看的内容",
-  ],
-  resource_gen: [
-    "请生成 5 道 408 操作系统选择题，主题是进程管理和死锁，做成可打印测试卷，并提供 Word 和 PDF 打印入口",
-    "基于我薄弱的 Cache 映射方式，生成一份微讲义、练习题和复习卡片",
-    "生成一份 408 计算机网络运输层资源包，包含知识结构、测验题和错题反馈建议",
-  ],
-  debate: [
-    "帮我辨析进程和线程，按 408 选择题易错点来讲",
-    "直接映射、全相联、组相联三种 Cache 映射方式怎么区分？",
+    "我不理解银行家算法为什么要先计算 Need 矩阵",
+    "进程和线程在 408 选择题里最容易混淆的地方是什么？",
     "死锁预防、死锁避免、死锁检测有什么区别？",
-  ],
-  explainer: [
-    "讲一下死锁产生的四个必要条件",
-    "用动画讲清楚 Cache 直接映射、全相联和组相联",
-    "演示 TCP 三次握手和四次挥手的过程",
+    "我做完一道题后，怎么判断自己是概念不会还是计算失误？",
   ],
 };
 
@@ -118,12 +63,6 @@ const stageLabelMap: Record<string, string> = {
   goal_diagnosis: "目标诊断",
   learning_plan: "学习路径规划",
   resource_generation: "资源构建",
-};
-
-const capabilityWorkflows: Record<string, string[]> = {
-  agentic: ["理解意图", "决定工具", "并行执行", "总结回答"],
-  resource_gen: ["检索材料", "生成讲义", "生成练习", "沉淀复习"],
-  debate: ["正方一辩", "反方一驳", "正方二辩", "反方二驳", "裁判终审"],
 };
 
 interface SessionSummary {
@@ -240,186 +179,24 @@ function ChatPanelInner() {
     quickPromptsByCapability[selectedCapability.id] ||
     quickPromptsByCapability.agentic;
 
-  const activeStageLabel =
-    state.activeStages.length > 0
-      ? stageLabelMap[state.activeStages[state.activeStages.length - 1]] ??
-        "处理中"
-      : state.isStreaming
-        ? "生成中"
-        : state.messages.length > 0
-          ? "已完成"
-          : "待输入";
-  const workflowSteps =
-    capabilityWorkflows[selectedCapability.id] || capabilityWorkflows.agentic;
-  const assistantMessageCount = state.messages.filter(
-    (message) => message.role === "assistant",
-  ).length;
   return (
     <div className="relative flex h-screen overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
-      {navOpen ? (
-        <div
-          role="button"
-          tabIndex={-1}
-          aria-label="关闭菜单"
-          onClick={() => setNavOpen(false)}
-          className="absolute inset-0 z-30 bg-black/10 backdrop-blur-[2px] lf-fade-in lg:hidden"
-        />
-      ) : null}
-      <aside
-        className={`absolute left-0 top-0 z-40 flex h-full w-[260px] shrink-0 flex-col border-r border-[var(--border)] bg-[var(--sidebar)] shadow-[12px_0_40px_rgba(0,0,0,0.06)] backdrop-blur-2xl transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] lg:relative lg:w-[248px] lg:translate-x-0 lg:shadow-none ${
-          navOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}>
-        <div className="flex h-14 items-center gap-3 px-5">
-          <BrandMark variant="logo" size={34} className="rounded-xl" />
-          <div>
-            <div className="text-[14px] font-semibold">ZhiPath</div>
-            <div className="text-[11px] text-[var(--muted-foreground)]">
-              Personal tutor
-            </div>
-          </div>
-        </div>
+      <AppSidebar
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+        onNewSession={() => {
+          handleNewSession();
+          setShowSessions(false);
+        }}
+        onShowHistory={() => {
+          setShowSessions(true);
+          setRightOpen(false);
+        }}
+        historyActive={showSessions}
+        knowledgeCount={knowledgeDocs?.length ?? null}
+      />
 
-        <button
-          type="button"
-          className="mx-4 mt-2 flex items-center justify-center gap-2 rounded-2xl bg-[var(--primary)] px-3 py-2.5 text-[13px] font-medium text-white shadow-sm transition hover:bg-[var(--primary-dark)]"
-          onClick={handleNewSession}
-        >
-          <PenLine size={15} />
-          新建学习会话
-        </button>
-
-        <nav className="mt-5 space-y-1 px-3">
-          {[
-            {
-              label: "导师对话",
-              icon: MessageSquare,
-              active: !showSessions,
-              onClick: () => setShowSessions(false),
-            },
-            {
-              label: "历史会话",
-              icon: Compass,
-              active: showSessions,
-              onClick: () => setShowSessions(true),
-            },
-          ].map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              onClick={item.onClick}
-              className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-[13px] transition ${
-                item.active
-                  ? "bg-[var(--card-solid)] text-[var(--foreground)] shadow-sm"
-                  : "text-[var(--muted-foreground)] hover:bg-[var(--card-solid)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              <item.icon size={16} strokeWidth={item.active ? 2 : 1.7} />
-              {item.label}
-            </button>
-          ))}
-          {/* 按学生学习场景过滤导航。 */}
-          {[
-            { slot: "nav.profile" as const, href: "/profile", icon: UserRound, label: "学习者画像" },
-            { slot: "nav.path" as const, href: "/path", icon: Route, label: "学习路径" },
-            { slot: "nav.resources" as const, href: "/resources", icon: Boxes, label: "资源工坊" },
-            { slot: "nav.knowledge" as const, href: "/knowledge", icon: Library, label: "知识库" },
-            { slot: "nav.analytics" as const, href: "/dashboard", icon: LayoutDashboard, label: "学习分析" },
-            { slot: "nav.overview" as const, href: "/overview", icon: LayoutDashboard, label: "系统总览" },
-          ]
-            .filter((n) => shouldShow(n.slot))
-            .map((n) => (
-              <Link
-                key={n.href}
-                href={n.href}
-                className="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-[13px] text-[var(--muted-foreground)] transition hover:bg-[var(--card-solid)] hover:text-[var(--foreground)]"
-              >
-                <n.icon size={16} strokeWidth={1.7} />
-                {n.label}
-              </Link>
-            ))}
-        </nav>
-
-        {showSessions ? (
-          <div className="mt-4 flex-1 overflow-y-auto px-3">
-            <div className="mb-2 px-1 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
-              会话列表
-            </div>
-            {sessions.length === 0 ? (
-              <div className="px-1 py-4 text-[12px] text-[var(--muted-foreground)]">
-                暂无历史会话
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {sessions.map((session) => (
-                  <button
-                    key={session.id}
-                    type="button"
-                    onClick={() => {
-                      switchSession(session.id);
-                      setShowSessions(false);
-                    }}
-                    className={`w-full rounded-2xl px-3 py-2 text-left text-[12px] transition hover:bg-[var(--card-solid)] ${
-                      state.sessionId === session.id
-                        ? "bg-[var(--card-solid)] shadow-sm"
-                        : ""
-                    }`}
-                  >
-                    <div className="truncate font-medium">{session.title}</div>
-                    <div className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">
-                      {session.message_count} 条消息
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="mt-6 px-4">
-              <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--muted-foreground)]">
-                当前能力
-              </div>
-              <div className="space-y-1.5">
-                {capabilities.map((capability) => (
-                  <button
-                    key={capability.id}
-                    type="button"
-                    onClick={() => setSelectedCapability(capability)}
-                    className={`w-full rounded-2xl border px-3 py-2 text-left transition ${
-                      selectedCapability.id === capability.id
-                        ? "border-[var(--border)] bg-[var(--card-solid)] shadow-sm"
-                        : "border-transparent bg-transparent hover:border-[var(--border)] hover:bg-[var(--card-solid)]"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 text-[13px] font-medium">
-                      <capability.icon
-                        size={15}
-                        className={
-                          selectedCapability.id === capability.id
-                            ? "text-[var(--primary)]"
-                            : ""
-                        }
-                      />
-                      {capability.label}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-auto border-t border-[var(--border)] px-4 py-4">
-              <div className="flex items-center gap-2 text-[12px] text-[var(--muted-foreground)]">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                {knowledgeDocs
-                  ? `知识库 ${knowledgeDocs.length} 份文档`
-                  : "知识库加载中"}
-              </div>
-            </div>
-          </>
-        )}
-      </aside>
-
-      <main className="flex min-w-0 flex-1 flex-col">
+      <main className="flex min-w-0 flex-1 flex-col lg:ml-[248px]">
         <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 backdrop-blur-2xl md:px-6">
           <div className="flex min-w-0 items-center gap-2">
             <button
@@ -463,6 +240,53 @@ function ChatPanelInner() {
         </header>
 
         <div className="relative flex min-h-0 flex-1">
+          {showSessions ? (
+            <section className="absolute inset-0 z-20 overflow-y-auto bg-[var(--background)] px-4 py-5 md:px-6">
+              <div className="mx-auto max-w-4xl">
+                <div className="mb-4 flex items-center justify-between border-b border-[var(--border)] pb-4">
+                  <div>
+                    <h2 className="text-[16px] font-semibold">历史会话</h2>
+                    <p className="mt-1 text-[12px] text-[var(--muted-foreground)]">
+                      继续之前的问题，或返回新会话。
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSessions(false)}
+                    className="rounded-xl border border-[var(--border)] bg-[var(--card-solid)] px-3 py-2 text-[12px] font-medium hover:bg-[var(--muted)]"
+                  >
+                    返回对话
+                  </button>
+                </div>
+                {sessions.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] px-5 py-10 text-center text-[13px] text-[var(--muted-foreground)]">
+                    还没有历史会话
+                  </div>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {sessions.map((session) => (
+                      <button
+                        key={session.id}
+                        type="button"
+                        onClick={() => {
+                          switchSession(session.id);
+                          setShowSessions(false);
+                        }}
+                        className="rounded-2xl border border-[var(--border)] bg-[var(--card-solid)] p-4 text-left transition hover:border-[var(--primary)]"
+                      >
+                        <div className="truncate text-[13px] font-semibold">
+                          {session.title}
+                        </div>
+                        <div className="mt-2 text-[11px] text-[var(--muted-foreground)]">
+                          {session.message_count} 条消息
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          ) : null}
           <section className="flex min-h-0 flex-1 flex-col">
             <div className="lf-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
               {state.messages.length === 0 && !state.isStreaming && (
@@ -477,20 +301,20 @@ function ChatPanelInner() {
                     <BrandTree className="h-[200px] w-full" />
                     <div className="pointer-events-none absolute left-5 top-5">
                       <div className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">
-                        ZhiPath · 知识之树
+                        408 学习工作台
                       </div>
                       <div className="mt-0.5 max-w-[260px] text-[12px] leading-5 text-[var(--muted-foreground)]">
-                        你的认知正在生长 · 学得越多，树越枝繁叶茂
+                        学习任务、课程资源和答疑记录都从这里进入
                       </div>
                     </div>
                   </div>
 
                   <div className="mb-3">
                     <h2 className="max-w-2xl text-[20px] font-semibold leading-tight text-[var(--foreground)] md:text-[22px]">
-                      今天想学什么？
+                      现在要解决什么？
                     </h2>
                     <p className="mt-1 max-w-xl text-[13px] leading-5 text-[var(--muted-foreground)]">
-                      输入目标、问题或教材主题，系统会保留上下文并生成下一步学习动作。
+                      直接输入不理解的知识点、题目或步骤。完整学习任务请从左侧进入。
                     </p>
                   </div>
 
