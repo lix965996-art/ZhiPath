@@ -1,5 +1,5 @@
-import { LearningPathTimeline } from "@/components/path/LearningPathTimeline";
+import { AdaptivePathView } from "@/components/learning/AdaptivePathView";
 
 export default function PathPage() {
-  return <LearningPathTimeline />;
+  return <AdaptivePathView />;
 }

@@ -5,8 +5,8 @@ import { RoleProvider } from "@/context/RoleContext";
 import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
-  title: "ZhiPath - 个性化资源生成与学习多智能体系统",
-  description: "基于大模型的个性化资源生成与学习多智能体系统",
+  title: "ZhiPath - 408 个性化学习助手",
+  description: "诊断薄弱点、安排今日任务、互动学习并动态调整路径。",
   other: {
     google: "notranslate",
   },
