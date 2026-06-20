@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type Role = "student" | "showcase";
+export type Role = "student";
 
 interface RoleContextValue {
   role: Role;
@@ -35,12 +35,8 @@ export type VisibleSlot =
   | "panel.knowledge_sources" // 引用追溯
   | "panel.pomodoro" // 番茄钟
   | "panel.pdf_report" // PDF 周报下载
-  // 顶部菜单
-  | "demo.panel" // 完整 demo 面板（不止 compact）
   // 主面板
   | "chat.guardrail"; // 内容安全告警条
-
-const STORAGE_KEY = "zhipath-role-v1";
 
 const SLOTS_BY_ROLE: Record<Role, Set<VisibleSlot>> = {
   // 学生模式：聚焦学习
@@ -55,23 +51,6 @@ const SLOTS_BY_ROLE: Record<Role, Set<VisibleSlot>> = {
     "panel.pdf_report",
     "chat.guardrail",
   ]),
-  // 演示模式：解锁所有炫技面板
-  showcase: new Set<VisibleSlot>([
-    "nav.profile",
-    "nav.path",
-    "nav.knowledge",
-    "nav.resources",
-    "nav.analytics",
-    "nav.overview",
-    "panel.agent_graph",
-    "panel.agent_feed",
-    "panel.profile_evidence",
-    "panel.knowledge_sources",
-    "panel.pomodoro",
-    "panel.pdf_report",
-    "demo.panel",
-    "chat.guardrail",
-  ]),
 };
 
 const RoleContext = createContext<RoleContextValue | null>(null);
@@ -79,20 +58,15 @@ const RoleContext = createContext<RoleContextValue | null>(null);
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<Role>("student");
 
-  // 首次加载时读 localStorage
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem(STORAGE_KEY) as Role | null;
-    if (saved === "student" || saved === "showcase") {
-      setRoleState(saved);
+    setRoleState("student");
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("zhipath-role-v1");
     }
   }, []);
 
-  const setRole = useCallback((r: Role) => {
-    setRoleState(r);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, r);
-    }
+  const setRole = useCallback(() => {
+    setRoleState("student");
   }, []);
 
   const value = useMemo<RoleContextValue>(() => {

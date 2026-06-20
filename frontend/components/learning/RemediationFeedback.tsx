@@ -1,40 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
-  GitCompareArrows,
   TriangleAlert,
 } from "lucide-react";
-import { useRole } from "@/context/RoleContext";
-import {
-  defaultLearningDemoState,
-  readLearningDemoState,
-  writeLearningDemoState,
-  type LearningDemoState,
-} from "@/lib/learning-demo";
+import { writeLearningSession } from "@/lib/learning-session";
 import { LearningShell } from "./LearningShell";
 
 export function RemediationFeedback() {
-  const { role } = useRole();
-  const [demo, setDemo] = useState<LearningDemoState>(defaultLearningDemoState);
   const [selected, setSelected] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
-
-  useEffect(() => setDemo(readLearningDemoState()), []);
 
   const correct = selected === 1;
   const submit = () => {
     setSubmitted(true);
-    if (selected === 1) {
-      const next = writeLearningDemoState({
-        remedialPassed: true,
-        pathAdjusted: true,
-        masteryAfter: 72,
-      });
-      setDemo(next);
-    }
+    writeLearningSession({
+      remedialAnswered: true,
+      remedialCorrect: selected === 1,
+    });
   };
 
   return (
@@ -42,14 +27,14 @@ export function RemediationFeedback() {
       <header className="mb-4">
         <p className="text-xs font-semibold text-rose-600">学习反馈</p>
         <h1 className="mt-1 text-lg font-semibold">
-          {demo.bankerAttempts > 0 ? "发现一个关键误区" : "验证你的概念理解"}
+          验证你的概念理解
         </h1>
         <p className="mt-1 text-xs text-slate-500">
-          系统不仅记录对错，还会判断错误原因并安排补救。
+          先完成辨析，再根据答案查看对应解释。
         </p>
       </header>
 
-      <div className={`grid gap-4 ${role === "showcase" ? "xl:grid-cols-[1fr_330px]" : ""}`}>
+      <div>
         <section className="space-y-5">
           <article className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="grid gap-4 md:grid-cols-2">
@@ -69,7 +54,7 @@ export function RemediationFeedback() {
           <article className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-center gap-2">
               <TriangleAlert size={19} className="text-amber-500" />
-              <h2 className="font-semibold">错误诊断：概念边界混淆</h2>
+              <h2 className="font-semibold">概念辨析</h2>
             </div>
             <div className="mt-4 rounded-xl border-l-4 border-blue-600 bg-blue-50/70 p-4 text-sm leading-7">
               <p>
@@ -80,16 +65,6 @@ export function RemediationFeedback() {
                 银行家算法正是通过寻找安全序列完成这项检查。
               </p>
             </div>
-          </article>
-
-          <article className="rounded-xl border border-cyan-200 bg-cyan-50/60 p-4">
-            <div className="flex items-center gap-2 font-semibold text-cyan-900">
-              <GitCompareArrows size={18} />
-              学习路径已动态调整
-            </div>
-            <p className="mt-3 text-sm leading-6 text-cyan-950">
-              系统已在后续“进程通信”之前插入“死锁避免概念补救”，并提高银行家算法练习优先级。
-            </p>
           </article>
 
           <article className="rounded-xl border border-slate-200 bg-white p-4">
@@ -136,7 +111,7 @@ export function RemediationFeedback() {
                 }`}
               >
                 {correct
-                  ? "回答正确。你已经能区分静态预防与动态避免。掌握度已更新。"
+                  ? "回答正确。你已经能区分静态预防与动态避免。"
                   : "还需要注意“每次分配前动态检查”这个关键词，请再比较一次上面的解释。"}
               </div>
             ) : null}
@@ -154,34 +129,13 @@ export function RemediationFeedback() {
                   href="/path"
                   className="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-5 py-2.5 text-sm font-semibold text-blue-700"
                 >
-                  查看调整后的路径 <ArrowRight size={15} />
+                  返回学习路径 <ArrowRight size={15} />
                 </Link>
               ) : null}
             </div>
           </article>
         </section>
 
-        {role === "showcase" ? (
-          <aside className="rounded-2xl border border-violet-200 bg-white p-5">
-            <div className="font-semibold text-violet-800">演示视图 · 决策证据</div>
-            <div className="mt-4 rounded-xl bg-slate-950 p-4 font-mono text-xs leading-6 text-slate-300">
-              <div className="text-cyan-300">[错误诊断智能体]</div>
-              <div>模式：Prevention vs Avoidance</div>
-              <div>类型：概念边界混淆</div>
-              <div>置信度：94%</div>
-              <div className="mt-2 text-violet-300">[路径规划智能体]</div>
-              <div>插入补救任务：deadlock_avoidance</div>
-              <div>延后：IPC +1 节点</div>
-              <div>验收：补救题通过</div>
-            </div>
-            <div className="mt-4 rounded-xl border border-slate-200 p-4">
-              <div className="text-xs text-slate-500">掌握状态变化</div>
-              <div className="mt-2 flex items-center gap-2 text-lg font-bold">
-                {demo.masteryBefore}% <ArrowRight size={16} /> {demo.masteryAfter}%
-              </div>
-            </div>
-          </aside>
-        ) : null}
       </div>
     </LearningShell>
   );

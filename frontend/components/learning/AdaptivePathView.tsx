@@ -6,21 +6,18 @@ import {
   ArrowRight,
   CheckCircle2,
   Circle,
-  GitCompareArrows,
   Wrench,
 } from "lucide-react";
 import {
-  defaultLearningDemoState,
-  readLearningDemoState,
-  type LearningDemoState,
-} from "@/lib/learning-demo";
+  emptyLearningSession,
+  readLearningSession,
+  type LearningSessionState,
+} from "@/lib/learning-session";
 import { LearningShell } from "./LearningShell";
 
 export function AdaptivePathView() {
-  const [demo, setDemo] = useState<LearningDemoState>(defaultLearningDemoState);
-  useEffect(() => setDemo(readLearningDemoState()), []);
-
-  const adjusted = demo.pathAdjusted || demo.remedialPassed;
+  const [session, setSession] = useState<LearningSessionState>(emptyLearningSession);
+  useEffect(() => setSession(readLearningSession()), []);
 
   return (
     <LearningShell>
@@ -29,7 +26,7 @@ export function AdaptivePathView() {
           <p className="text-sm font-semibold text-blue-600">操作系统 · 当前阶段</p>
           <h1 className="mt-1 text-lg font-semibold">学习路径</h1>
           <p className="mt-1 text-xs text-slate-500">
-            路径不是固定课程表，会根据诊断和练习结果持续调整。
+            这里只显示已完成和可继续的真实学习步骤。
           </p>
         </div>
         <Link
@@ -41,61 +38,34 @@ export function AdaptivePathView() {
       </header>
 
       <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div>
           <PathColumn
-            title="原学习计划"
-            muted={adjusted}
+            title="当前学习顺序"
             items={[
-              { title: "死锁条件", state: "done" },
-              { title: "进程通信 IPC", state: "current" },
-              { title: "银行家算法", state: "pending" },
-            ]}
-          />
-          <PathColumn
-            title={adjusted ? "优化后路径" : "当前路径"}
-            items={[
-              { title: "死锁条件", state: "done" },
-              ...(adjusted
-                ? [
-                    {
-                      title: "补救练习：资源分配图",
-                      state: demo.remedialPassed ? ("done" as const) : ("current" as const),
-                    },
-                  ]
-                : []),
               {
-                title: "银行家算法",
-                state: adjusted && demo.remedialPassed ? "current" : "pending",
+                title: "操作系统基础诊断",
+                state: session.diagnosticCompleted ? "done" : "current",
               },
-              { title: "进程通信 IPC", state: "pending" },
+              {
+                title: "银行家算法安全序列实验",
+                state:
+                  session.safeSequence.length === 5
+                    ? "done"
+                    : session.diagnosticCompleted
+                      ? "current"
+                      : "pending",
+              },
+              {
+                title: "死锁策略辨析练习",
+                state: session.remedialCorrect
+                  ? "done"
+                  : session.safeSequence.length === 5
+                    ? "current"
+                    : "pending",
+              },
             ]}
           />
         </div>
-      </section>
-
-      <section className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50/70 p-4">
-        <div className="flex items-center gap-2 font-semibold text-cyan-900">
-          <GitCompareArrows size={18} />
-          {adjusted ? "为什么发生调整" : "什么时候会调整"}
-        </div>
-        <p className="mt-3 max-w-4xl text-sm leading-7 text-cyan-950">
-          {adjusted
-            ? "你在资源分配与死锁策略辨析中暴露出概念混淆。系统先插入补救练习，再提前银行家算法，避免带着错误基础进入后续内容。"
-            : "完成互动学习和补救题后，系统会根据错误类型、掌握变化和复习结果重新排列后续任务。"}
-        </p>
-        {adjusted ? (
-          <div className="mt-4 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-white px-3 py-1.5 text-cyan-800">
-              触发：概念边界混淆
-            </span>
-            <span className="rounded-full bg-white px-3 py-1.5 text-cyan-800">
-              新增：1 个补救任务
-            </span>
-            <span className="rounded-full bg-white px-3 py-1.5 text-cyan-800">
-              掌握度：{demo.masteryBefore}% → {demo.masteryAfter}%
-            </span>
-          </div>
-        ) : null}
       </section>
     </LearningShell>
   );
@@ -104,14 +74,12 @@ export function AdaptivePathView() {
 function PathColumn({
   title,
   items,
-  muted = false,
 }: {
   title: string;
   items: Array<{ title: string; state: "done" | "current" | "pending" }>;
-  muted?: boolean;
 }) {
   return (
-    <div className={muted ? "opacity-55" : ""}>
+    <div>
       <h2 className="text-sm font-semibold text-slate-600">{title}</h2>
       <div className="mt-4 space-y-3">
         {items.map((item, index) => (

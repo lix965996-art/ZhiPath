@@ -14,19 +14,19 @@ import {
   type MasterySnapshot,
 } from "@/lib/api";
 import {
-  defaultLearningDemoState,
-  readLearningDemoState,
-  type LearningDemoState,
-} from "@/lib/learning-demo";
+  emptyLearningSession,
+  readLearningSession,
+  type LearningSessionState,
+} from "@/lib/learning-session";
 import { LearningShell } from "./LearningShell";
 
 export function TodayLearningDashboard() {
-  const [demo, setDemo] = useState<LearningDemoState>(defaultLearningDemoState);
+  const [session, setSession] = useState<LearningSessionState>(emptyLearningSession);
   const [mastery, setMastery] = useState<MasterySnapshot | null>(null);
-  const [dueCount, setDueCount] = useState(3);
+  const [dueCount, setDueCount] = useState<number | null>(null);
 
   useEffect(() => {
-    setDemo(readLearningDemoState());
+    setSession(readLearningSession());
     listSessions()
       .then(async (sessions) => {
         if (!sessions[0]) return;
@@ -34,19 +34,26 @@ export function TodayLearningDashboard() {
           getMastery(sessions[0].id),
           getDueCards(sessions[0].id, 50),
         ]);
-        if (masteryData.status === "fulfilled") setMastery(masteryData.value);
-        if (cards.status === "fulfilled" && cards.value.length > 0) {
+        if (
+          masteryData.status === "fulfilled" &&
+          masteryData.value.kcs.some((item) => item.attempts > 0)
+        ) {
+          setMastery(masteryData.value);
+        }
+        if (cards.status === "fulfilled") {
           setDueCount(cards.value.length);
         }
       })
       .catch(() => undefined);
   }, []);
 
-  const weak =
-    mastery?.kcs
-      .filter((item) => item.mastery < 0.55)
-      .sort((a, b) => a.mastery - b.mastery)[0]?.label ?? "资源分配图";
-  const completed = demo.remedialPassed ? 3 : demo.safeSequence.length ? 2 : 1;
+  const weak = mastery?.kcs
+    .filter((item) => item.attempts > 0 && item.mastery < 0.55)
+    .sort((a, b) => a.mastery - b.mastery)[0];
+  const completed =
+    Number(session.diagnosticCompleted) +
+    Number(session.safeSequence.length === 5) +
+    Number(session.remedialCorrect);
 
   return (
     <LearningShell>
@@ -54,7 +61,7 @@ export function TodayLearningDashboard() {
         <div>
           <h1 className="text-lg font-semibold tracking-tight">今日学习</h1>
           <p className="mt-1 text-xs text-slate-500">
-            3 项任务 · 预计 32 分钟 · 根据最近答题表现排序
+            3 项任务 · 预计 28 分钟
           </p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
@@ -66,52 +73,62 @@ export function TodayLearningDashboard() {
         <section className="space-y-3">
           <TaskCard
             index={1}
-            label="到期复习"
-            title="死锁的四个必要条件"
-            detail={`${dueCount} 张记忆卡 · 预计 5 分钟`}
-            reason="这些内容已到最佳复习时间，先快速唤醒记忆。"
-            status="completed"
-            href="/dashboard"
+            label="基础检查"
+            title="操作系统诊断"
+            detail="10 道题 · 预计 8 分钟"
+            reason={
+              session.diagnosticCompleted
+                ? `已完成，答对 ${session.diagnosticScore ?? 0}/10。`
+                : "先记录当前基础，后续学习结果才能有可比较的起点。"
+            }
+            status={session.diagnosticCompleted ? "completed" : "active"}
+            href="/diagnostic"
           />
           <TaskCard
             index={2}
             label="重点学习"
             title="银行家算法与安全序列"
             detail="互动矩阵 · 预计 15 分钟"
-            reason={`你在「${weak}」相关题目中出现连续错误，需要先补齐资源分配逻辑。`}
-            status="active"
+            reason={
+              weak
+                ? `真实掌握度记录中，「${weak.label}」当前为 ${Math.round(weak.mastery * 100)}%。`
+                : "通过实际资源矩阵操作理解安全序列，不依赖文字背诵。"
+            }
+            status={session.safeSequence.length === 5 ? "completed" : session.diagnosticCompleted ? "active" : "pending"}
             href="/learn/bankers"
           />
           <TaskCard
             index={3}
             label="针对性练习"
             title="死锁预防与死锁避免"
-            detail="3 道动态难度题 · 预计 12 分钟"
+            detail="1 道概念辨析题 · 预计 5 分钟"
             reason="完成互动学习后，用相似但不重复的题目验证是否真正掌握。"
-            status="pending"
+            status={session.remedialCorrect ? "completed" : session.safeSequence.length === 5 ? "active" : "pending"}
             href="/feedback/bankers"
           />
         </section>
 
         <aside className="space-y-3">
           <section className="grid grid-cols-2 gap-3">
-            <Metric icon={Target} value={`${demo.masteryAfter}%`} label="当前掌握" />
-            <Metric icon={Clock3} value="32 分钟" label="今日预计" />
+            <Metric
+              icon={Target}
+              value={
+                mastery
+                  ? `${Math.round(mastery.summary.avg_mastery * 100)}%`
+                  : "暂无"
+              }
+              label="真实掌握记录"
+            />
+            <Metric icon={Clock3} value="28 分钟" label="任务预计" />
           </section>
 
-          {!demo.diagnosticCompleted ? (
-            <Link
-              href="/diagnostic"
-              className="flex items-center justify-between rounded-xl border border-violet-200 bg-white p-3 text-xs font-semibold text-violet-700"
-            >
-              完成自适应诊断
-              <ArrowRight size={16} />
-            </Link>
-          ) : (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
-              诊断已完成：系统已定位当前薄弱点。
-            </div>
-          )}
+          <div className="rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-500">
+            {dueCount === null
+              ? "尚未读取到复习记录。"
+              : dueCount > 0
+                ? `今天有 ${dueCount} 张真实到期卡片。`
+                : "今天没有到期复习卡片。"}
+          </div>
         </aside>
       </div>
     </LearningShell>

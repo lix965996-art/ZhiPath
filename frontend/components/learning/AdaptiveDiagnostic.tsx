@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BrainCircuit, CheckCircle2, HelpCircle, Network } from "lucide-react";
-import { useRole } from "@/context/RoleContext";
-import { writeLearningDemoState } from "@/lib/learning-demo";
+import { HelpCircle } from "lucide-react";
+import { writeLearningSession } from "@/lib/learning-session";
 import { LearningShell } from "./LearningShell";
 
 const questions = [
@@ -73,19 +72,10 @@ const questions = [
 
 export function AdaptiveDiagnostic() {
   const router = useRouter();
-  const { role } = useRole();
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<number | null>>([]);
   const [selected, setSelected] = useState<number | null>(null);
 
-  const correctCount = useMemo(
-    () =>
-      answers.reduce<number>(
-        (count, answer, i) => count + (answer === questions[i].answer ? 1 : 0),
-        0,
-      ),
-    [answers],
-  );
   const current = questions[index];
 
   const next = () => {
@@ -95,11 +85,9 @@ export function AdaptiveDiagnostic() {
         (count, answer, i) => count + (answer === questions[i].answer ? 1 : 0),
         0,
       );
-      writeLearningDemoState({
+      writeLearningSession({
         diagnosticCompleted: true,
         diagnosticScore: score,
-        masteryBefore: Math.max(28, Math.round((score / questions.length) * 70)),
-        masteryAfter: Math.max(28, Math.round((score / questions.length) * 70)),
       });
       router.push("/today");
       return;
@@ -111,15 +99,15 @@ export function AdaptiveDiagnostic() {
 
   return (
     <LearningShell>
-      <div className={`grid gap-4 ${role === "showcase" ? "xl:grid-cols-[1fr_320px]" : ""}`}>
+      <div>
         <section>
           <header className="mb-4">
-            <p className="text-xs font-semibold text-cyan-700">自适应诊断</p>
+            <p className="text-xs font-semibold text-cyan-700">基础诊断</p>
             <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h1 className="text-lg font-semibold">操作系统 · 基础定位</h1>
                 <p className="mt-1 text-xs text-slate-500">
-                  不会可以选择“不确定”，这比猜答案更有助于系统判断。
+                  不会可以选择“不确定”，结果只按你的实际作答统计。
                 </p>
               </div>
               <span className="text-sm font-semibold text-blue-600">
@@ -176,51 +164,7 @@ export function AdaptiveDiagnostic() {
           </article>
         </section>
 
-        {role === "showcase" ? (
-          <aside className="rounded-xl border border-violet-200 bg-white p-4">
-            <div className="flex items-center gap-2 font-semibold text-violet-800">
-              <BrainCircuit size={18} />
-              演示视图 · 选题依据
-            </div>
-            <div className="mt-5 space-y-4 text-sm">
-              <Evidence
-                icon={Network}
-                title="当前定位范围"
-                value={index < 6 ? "死锁与资源分配" : "操作系统综合基础"}
-              />
-              <Evidence
-                icon={CheckCircle2}
-                title="已确认掌握"
-                value={`${correctCount} 个知识证据`}
-              />
-              <div className="rounded-xl bg-slate-950 p-4 font-mono text-xs leading-6 text-slate-300">
-                <div className="text-cyan-300">[诊断智能体] 正在更新知识状态</div>
-                <div>上一题结果：{answers.at(-1) == null ? "等待作答" : "已记录"}</div>
-                <div>当前策略：优先缩小薄弱边界</div>
-                <div>下一目标：{questions[index + 1]?.topic ?? "生成诊断结论"}</div>
-              </div>
-            </div>
-          </aside>
-        ) : null}
       </div>
     </LearningShell>
-  );
-}
-
-function Evidence({
-  icon: Icon,
-  title,
-  value,
-}: {
-  icon: typeof Network;
-  title: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-xl border border-slate-200 p-4">
-      <Icon size={16} className="text-blue-600" />
-      <div className="mt-2 text-xs text-slate-500">{title}</div>
-      <div className="mt-1 font-semibold">{value}</div>
-    </div>
   );
 }

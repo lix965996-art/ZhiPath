@@ -317,7 +317,7 @@ function ChatPanelInner() {
               {item.label}
             </button>
           ))}
-          {/* 按角色过滤显示导航 — 学生只看 4 个、教师只看 3 个、演示模式看全部 */}
+          {/* 按学生学习场景过滤导航。 */}
           {[
             { slot: "nav.profile" as const, href: "/profile", icon: UserRound, label: "学习者画像" },
             { slot: "nav.path" as const, href: "/path", icon: Route, label: "学习路径" },

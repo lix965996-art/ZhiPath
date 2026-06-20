@@ -10,9 +10,7 @@ import {
   GraduationCap,
   Route,
   Settings,
-  ShieldCheck,
 } from "lucide-react";
-import { RoleSwitcher } from "@/components/role/RoleSwitcher";
 
 const nav = [
   { href: "/today", label: "今日学习", icon: CalendarDays },
@@ -34,7 +32,7 @@ export function LearningShell({ children }: { children: React.ReactNode }) {
           </div>
           <div>
             <div className="text-lg font-bold tracking-tight">ZhiPath</div>
-            <div className="text-xs text-slate-500">408 个性化学习助手</div>
+            <div className="text-xs text-slate-500">408 学习工具</div>
           </div>
         </div>
 
@@ -60,15 +58,7 @@ export function LearningShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="mt-auto space-y-4 border-t border-[#e4e9f2] p-4">
-          <div className="rounded-xl bg-slate-50 p-3">
-            <div className="text-xs text-slate-500">当前目标</div>
-            <div className="mt-1 flex items-center justify-between text-sm font-semibold">
-              <span>408 考研</span>
-              <span className="text-blue-600">126 天</span>
-            </div>
-          </div>
-          <RoleSwitcher />
+        <div className="mt-auto border-t border-[#e4e9f2] p-4">
           <div className="flex items-center gap-2 px-1 text-xs text-slate-500">
             <Settings size={14} />
             设置
@@ -82,13 +72,7 @@ export function LearningShell({ children }: { children: React.ReactNode }) {
             <GraduationCap size={20} className="text-blue-600" />
             ZhiPath
           </Link>
-          <div className="hidden items-center gap-2 text-xs text-slate-500 lg:flex">
-            <ShieldCheck size={15} className="text-emerald-500" />
-            学习记录已同步
-          </div>
-          <div className="lg:hidden">
-            <RoleSwitcher compact />
-          </div>
+          <div />
         </header>
         <main className="mx-auto w-full max-w-[1180px] px-4 py-4 lg:px-6 lg:py-5">
           {children}

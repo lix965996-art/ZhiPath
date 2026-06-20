@@ -10,8 +10,7 @@ import {
   ShieldCheck,
   XCircle,
 } from "lucide-react";
-import { useRole } from "@/context/RoleContext";
-import { writeLearningDemoState } from "@/lib/learning-demo";
+import { writeLearningSession } from "@/lib/learning-session";
 import { LearningShell } from "./LearningShell";
 
 type Vector = [number, number, number];
@@ -37,17 +36,12 @@ const need = (row: ProcessRow): Vector => [
 ];
 
 export function BankersAlgorithmLab() {
-  const { role } = useRole();
   const [available, setAvailable] = useState<Vector>(initialAvailable);
   const [sequence, setSequence] = useState<string[]>([]);
   const [mistakes, setMistakes] = useState(0);
   const [message, setMessage] = useState(
     "选择一个 Need 不超过 Available 的进程，构建一条安全序列。",
   );
-  const [logs, setLogs] = useState<string[]>([
-    "初始化资源矩阵",
-    "当前 Work = Available = (3, 3, 2)",
-  ]);
 
   const complete = sequence.length === processes.length;
   const remaining = useMemo(
@@ -64,10 +58,7 @@ export function BankersAlgorithmLab() {
       setMessage(
         `${row.id} 暂时不能执行：Need (${rowNeed.join(", ")}) 超过当前 Available (${available.join(", ")})。`,
       );
-      setLogs((items) => [
-        ...items,
-        `尝试 ${row.id}：Need > Work，校验失败`,
-      ]);
+      writeLearningSession({ bankerAttempts: mistakes + 1 });
       return;
     }
 
@@ -82,16 +73,9 @@ export function BankersAlgorithmLab() {
     setMessage(
       `${row.id} 可以完成，并释放 Allocation (${row.allocation.join(", ")})。Available 更新为 (${nextAvailable.join(", ")})。`,
     );
-    setLogs((items) => [
-      ...items,
-      `${row.id} 校验通过，释放资源`,
-      `Work 更新为 (${nextAvailable.join(", ")})`,
-    ]);
-    writeLearningDemoState({
+    writeLearningSession({
       bankerAttempts: mistakes,
       safeSequence: nextSequence,
-      pathAdjusted: mistakes > 0,
-      masteryAfter: nextSequence.length === processes.length ? 58 : 42,
     });
   };
 
@@ -100,7 +84,7 @@ export function BankersAlgorithmLab() {
     setSequence([]);
     setMistakes(0);
     setMessage("选择一个 Need 不超过 Available 的进程，构建一条安全序列。");
-    setLogs(["重新初始化资源矩阵", "当前 Work = (3, 3, 2)"]);
+    writeLearningSession({ bankerAttempts: 0, safeSequence: [] });
   };
 
   return (
@@ -133,7 +117,7 @@ export function BankersAlgorithmLab() {
         </div>
       </header>
 
-      <div className={`grid gap-4 ${role === "showcase" ? "xl:grid-cols-[1fr_330px]" : "xl:grid-cols-[1fr_280px]"}`}>
+      <div className="grid gap-4 xl:grid-cols-[1fr_280px]">
         <section className="space-y-5">
           <article className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -276,21 +260,6 @@ export function BankersAlgorithmLab() {
             </section>
           ) : null}
 
-          {role === "showcase" ? (
-            <section className="rounded-2xl bg-slate-950 p-4 text-slate-300">
-              <div className="text-xs font-semibold text-cyan-300">
-                演示视图 · 行为证据流
-              </div>
-              <div className="mt-3 space-y-1 font-mono text-[11px] leading-5">
-                {logs.slice(-8).map((log, index) => (
-                  <div key={`${log}-${index}`}>&gt; {log}</div>
-                ))}
-              </div>
-              <div className="mt-3 border-t border-slate-700 pt-3 text-[11px]">
-                错误尝试：{mistakes} · 已完成：{sequence.length}/5
-              </div>
-            </section>
-          ) : null}
         </aside>
       </div>
     </LearningShell>

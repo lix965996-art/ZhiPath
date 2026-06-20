@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
-  ArrowRight,
   BookOpenCheck,
   ChartNoAxesCombined,
   Clock3,
@@ -17,19 +15,19 @@ import {
   type MasterySnapshot,
 } from "@/lib/api";
 import {
-  defaultLearningDemoState,
-  readLearningDemoState,
-  type LearningDemoState,
-} from "@/lib/learning-demo";
+  emptyLearningSession,
+  readLearningSession,
+  type LearningSessionState,
+} from "@/lib/learning-session";
 import { LearningShell } from "./LearningShell";
 
 export function LearningProgressDashboard() {
-  const [demo, setDemo] = useState<LearningDemoState>(defaultLearningDemoState);
+  const [session, setSession] = useState<LearningSessionState>(emptyLearningSession);
   const [mastery, setMastery] = useState<MasterySnapshot | null>(null);
-  const [due, setDue] = useState(0);
+  const [due, setDue] = useState<number | null>(null);
 
   useEffect(() => {
-    setDemo(readLearningDemoState());
+    setSession(readLearningSession());
     listSessions()
       .then(async (sessions) => {
         if (!sessions[0]) return;
@@ -37,18 +35,21 @@ export function LearningProgressDashboard() {
           getMastery(sessions[0].id),
           getDueCards(sessions[0].id, 50),
         ]);
-        if (masteryResult.status === "fulfilled") setMastery(masteryResult.value);
+        if (
+          masteryResult.status === "fulfilled" &&
+          masteryResult.value.kcs.some((item) => item.attempts > 0)
+        ) {
+          setMastery(masteryResult.value);
+        }
         if (dueResult.status === "fulfilled") setDue(dueResult.value.length);
       })
       .catch(() => undefined);
   }, []);
 
-  const avg = mastery
-    ? Math.round(mastery.summary.avg_mastery * 100)
-    : demo.masteryAfter;
+  const avg = mastery ? Math.round(mastery.summary.avg_mastery * 100) : null;
   const weak =
     mastery?.kcs
-      .filter((item) => item.mastery < 0.55)
+      .filter((item) => item.attempts > 0 && item.mastery < 0.55)
       .sort((a, b) => a.mastery - b.mastery)
       .slice(0, 3) ?? [];
 
@@ -63,10 +64,35 @@ export function LearningProgressDashboard() {
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={BookOpenCheck} label="最近学习" value="12 个核心概念" />
-        <Metric icon={ChartNoAxesCombined} label="综合掌握度" value={`${avg}%`} />
-        <Metric icon={TriangleAlert} label="主要薄弱点" value="资源分配与死锁" alert />
-        <Metric icon={Target} label="下一步" value="完成补救练习" />
+        <Metric
+          icon={BookOpenCheck}
+          label="已完成步骤"
+          value={`${Number(session.diagnosticCompleted) + Number(session.safeSequence.length === 5) + Number(session.remedialCorrect)}/3`}
+        />
+        <Metric
+          icon={ChartNoAxesCombined}
+          label="后端掌握度"
+          value={avg === null ? "暂无记录" : `${avg}%`}
+        />
+        <Metric
+          icon={TriangleAlert}
+          label="后端薄弱点"
+          value={weak[0]?.label ?? "暂无记录"}
+          alert={weak.length > 0}
+        />
+        <Metric
+          icon={Target}
+          label="当前步骤"
+          value={
+            !session.diagnosticCompleted
+              ? "完成基础诊断"
+              : session.safeSequence.length !== 5
+                ? "完成安全序列"
+                : session.remedialCorrect
+                  ? "本单元已完成"
+                  : "完成辨析练习"
+          }
+        />
       </section>
 
       <section className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
@@ -76,41 +102,40 @@ export function LearningProgressDashboard() {
             <span className="text-xs text-slate-500">操作系统 · 当前阶段</span>
           </div>
           <div className="mt-4 space-y-4">
-            <MasteryRow label="死锁必要条件" value={78} />
-            <MasteryRow label="资源分配图" value={demo.remedialPassed ? 68 : 42} />
-            <MasteryRow label="银行家算法" value={demo.safeSequence.length === 5 ? 72 : 38} />
-            {weak.map((item) => (
+            {mastery ? mastery.kcs.filter((item) => item.attempts > 0).map((item) => (
               <MasteryRow
                 key={item.kc_id}
                 label={item.label}
                 value={Math.round(item.mastery * 100)}
               />
-            ))}
+            )) : (
+              <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
+                暂无后端掌握度记录。完成系统中的正式测验后，这里才会显示数据。
+              </p>
+            )}
           </div>
         </article>
 
         <aside className="space-y-4">
-          <section className="rounded-xl border border-rose-200 bg-rose-50 p-4">
-            <div className="text-xs font-semibold text-rose-600">仍需突破</div>
-            <h2 className="mt-2 text-lg font-semibold">死锁预防与避免的概念边界</h2>
-            <p className="mt-2 text-sm leading-6 text-rose-900">
-              系统检测到你容易把“设计阶段的静态约束”和“运行时的安全检查”混淆。
-            </p>
-            <Link
-              href="/feedback/bankers"
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
-            >
-              开始补救 <ArrowRight size={15} />
-            </Link>
-          </section>
+          {weak[0] ? (
+            <section className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+              <div className="text-xs font-semibold text-rose-600">当前最低掌握项</div>
+              <h2 className="mt-2 text-lg font-semibold">{weak[0].label}</h2>
+              <p className="mt-2 text-sm leading-6 text-rose-900">
+                后端记录掌握度为 {Math.round(weak[0].mastery * 100)}%。
+              </p>
+            </section>
+          ) : null}
 
           <section className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Clock3 size={17} className="text-blue-600" />
               今日复习
             </div>
-            <div className="mt-2 text-xl font-bold">{due || 3}</div>
-            <div className="mt-1 text-xs text-slate-500">张到期卡片 · 约 5 分钟</div>
+            <div className="mt-2 text-xl font-bold">{due === null ? "—" : due}</div>
+            <div className="mt-1 text-xs text-slate-500">
+              {due === null ? "尚未读取到复习记录" : "张真实到期卡片"}
+            </div>
           </section>
         </aside>
       </section>

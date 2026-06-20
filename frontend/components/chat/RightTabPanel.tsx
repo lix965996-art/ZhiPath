@@ -20,11 +20,10 @@ import type { ChatState } from "@/context/ChatContext";
 
 /**
  * 右侧 tab 化面板：默认只展开 1 个 tab，其他折叠成 chip。
- * - 角色不同 → 默认 tab 不同（学生 = 学情 / 教师 = PDF 周报 / 演示 = 多智能体）
  * - 不可见的 tab 自动隐藏（按 shouldShow 槽位过滤）
  */
 interface RightTabPanelProps {
-  role: "student" | "showcase";
+  role: "student";
   state: ChatState;
   profile: LearningProfile | null;
   knowledgeDocs: KnowledgeDocumentSummary[] | null;
@@ -94,9 +93,8 @@ const ALL_TABS: TabDef[] = [
   },
 ];
 
-const DEFAULT_TAB_BY_ROLE: Record<"student" | "showcase", TabKey> = {
+const DEFAULT_TAB_BY_ROLE: Record<"student", TabKey> = {
   student: "profile",
-  showcase: "pipeline",
 };
 
 export function RightTabPanel({
