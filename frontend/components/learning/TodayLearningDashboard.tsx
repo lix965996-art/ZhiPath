@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
-  Brain,
   Clock3,
   Target,
 } from "lucide-react";
@@ -95,22 +94,6 @@ export function TodayLearningDashboard() {
         </section>
 
         <aside className="space-y-3">
-          <section className="rounded-xl border border-cyan-200 bg-cyan-50/70 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-cyan-900">
-              <Brain size={17} />
-              为什么这样安排
-            </div>
-            <p className="mt-2 text-xs leading-5 text-cyan-950">
-              你最近在资源分配图上连续出错。银行家算法直接依赖这个知识点，因此被提前到今天。
-            </p>
-            <Link
-              href="/path"
-              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-cyan-800"
-            >
-              查看路径变化 <ArrowRight size={13} />
-            </Link>
-          </section>
-
           <section className="grid grid-cols-2 gap-3">
             <Metric icon={Target} value={`${demo.masteryAfter}%`} label="当前掌握" />
             <Metric icon={Clock3} value="32 分钟" label="今日预计" />
