@@ -310,6 +310,18 @@ export interface QuizData {
   short_answer_questions: QuizQuestion[];
 }
 
+export interface ShortAnswerFeedback {
+  index: number;        // 在 flatten 后的题目列表中的下标
+  score: number;        // 0~1
+  passed: boolean;
+  covered: string[];    // 答到的要点
+  missing: string[];    // 漏掉的要点
+  errors: string[];     // 说错/概念混淆处
+  diagnosis: string;    // 思路断在哪
+  follow_up: string;    // 引导性追问（不直接给答案）
+  offline: boolean;     // true = LLM 不可用时的离线粗判
+}
+
 export interface QuizSubmitResult {
   total: number;
   correct: number;
@@ -317,6 +329,8 @@ export interface QuizSubmitResult {
   wrong_topics: string[];
   analysis: string;
   path_updated: boolean;
+  wrong_indices?: number[];                      // 真正答错的题目下标（前端据此精确标红，而非按位置）
+  short_answer_feedback?: ShortAnswerFeedback[]; // 简答题逐点点评
   remediation_plan?: {
     mastery_level: string;
     priority: "low" | "medium" | "high" | string;
@@ -393,13 +407,14 @@ export async function getLatestExam(sessionId: string): Promise<ExamData | null>
 // ---- Learning Resource Packages ----
 
 export interface ResourcePackageAsset {
-  type: "quiz" | "exam" | "flashcards" | "mindmap" | "audio" | "code_lab" | string;
+  type: "quiz" | "exam" | "flashcards" | "mindmap" | "audio" | "code_lab" | "video" | string;
   label: string;
   status: "ready" | "pending" | string;
   count?: number;
   ref_id?: string;
   url?: string;
   language?: string;
+  title?: string;
 }
 
 export interface CodeCheckpoint {
@@ -573,6 +588,15 @@ export interface LearningResourcePackage {
     };
     code_lab?: CodeLabResource;
     mermaid?: MermaidDiagram;
+    video_lesson?: {
+      url: string;
+      title: string;
+      topic?: string;
+      template?: string;
+      duration?: number;
+      narration_provider?: string;
+      has_audio?: boolean;
+    };
   };
   assets: ResourcePackageAsset[];
   // 真实可追溯字段 (后端落库, 替代前端启发式推断)
@@ -614,6 +638,40 @@ export async function runCCode(input: {
     throw new Error(`代码运行失败：${response.status}`);
   }
   return response.json();
+}
+
+export interface CodeLabCoach {
+  diagnosis: string; // 代码/思路断在哪
+  hint: string;      // 一条下一步提示（不直接给答案）
+  focus: string;     // 需回顾的知识点（可空）
+}
+
+// 学生代码未通过时，主动求一次「导师点拨」。LLM 不可用时返回 null。
+export async function coachCodeLab(input: {
+  code: string;
+  description?: string;
+  expected_output?: string;
+  reason?: string;
+  stderr?: string;
+  diff?: string[];
+}): Promise<CodeLabCoach | null> {
+  const response = await apiFetch("/api/v1/resources/code-lab/coach", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      code: input.code,
+      description: input.description ?? "",
+      expected_output: input.expected_output ?? "",
+      reason: input.reason ?? "wrong_output",
+      stderr: input.stderr ?? "",
+      diff: input.diff ?? [],
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`导师点拨失败：${response.status}`);
+  }
+  const data = await response.json();
+  return data?.coach ?? null;
 }
 
 export async function listResourcePackages(sessionId?: string): Promise<LearningResourcePackage[]> {

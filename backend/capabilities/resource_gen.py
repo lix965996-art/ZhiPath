@@ -336,6 +336,35 @@ class ResourceGenerationCapability(PromptedLLMCapability):
                     stream.thinking("讯飞 TTS 合成完成。")
                     agent_results["讲义音频"] = {"audio_url": audio_url, "provider": "iFlytek"}
 
+            # 动画讲解视频：主题命中模板库（快排/二分查找等）→ Manim 渲染 + 讯飞 TTS 旁白，
+            # 缺 manim/ffmpeg/凭据时优雅降级（不阻塞资源包）。
+            video = None
+            from services.video import generate_lesson_video, match_template
+
+            template_key = match_template(context.user_message) or match_template(
+                context.learning_goal or ""
+            )
+            if template_key:
+                self._emit_agent_message(
+                    stream,
+                    "Orchestrator",
+                    "VideoGenerator",
+                    {"template": template_key},
+                    label="动画视频生成",
+                )
+                stream.thinking(f"渲染「{template_key}」动画讲解视频（Manim + 讯飞 TTS）...")
+                video = await asyncio.to_thread(
+                    generate_lesson_video, template_key, context.user_message
+                )
+                if video:
+                    stream.thinking("动画讲解视频合成完成。")
+                    agent_results["动画讲解视频"] = {
+                        "title": video["title"],
+                        "url": video["url"],
+                        "provider": video.get("narration_provider"),
+                        "duration": video.get("duration"),
+                    }
+
             citation_sources = extract_citation_sources(context.knowledge_context or "")
 
             package = await ResourcePackageStore().create_from_generation(
@@ -351,6 +380,7 @@ class ResourceGenerationCapability(PromptedLLMCapability):
                 mermaid=mermaid,
                 case_study=case_study,
                 audio_url=audio_url,
+                video=video,
                 citation_sources=citation_sources,
             )
             agent_results["学习资源包"] = {

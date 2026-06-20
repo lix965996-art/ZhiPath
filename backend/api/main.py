@@ -96,7 +96,6 @@ def create_app() -> FastAPI:
         audio,
         auth,
         credentials as creds_router,
-        demo,
         exams,
         experiments,
         feedback,
@@ -115,13 +114,14 @@ def create_app() -> FastAPI:
         study_session,
         tracing,
         user_configs,
+        video,
         ws,
         xapi,
     )
     app.include_router(audio.router)
+    app.include_router(video.router)
     app.include_router(auth.router)
     app.include_router(creds_router.router)
-    app.include_router(demo.router)
     app.include_router(exams.router)
     app.include_router(experiments.router)
     app.include_router(feedback.router)

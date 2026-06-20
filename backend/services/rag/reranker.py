@@ -140,10 +140,12 @@ class LLMReranker:
         if self._llm is not None:
             return
         try:
-            from base.llm_factory import LLMFactory
+            # 走 ModelRouter：默认 profile 缺 key 时自动回退到有 key 的模型（如 deepseek）。
+            from base.model_router import get_model_router
 
-            self._llm = LLMFactory.from_profile(None)
-            logger.info("LLM reranker initialized with default profile")
+            model, picked = get_model_router().for_task("chat")
+            self._llm = model
+            logger.info("LLM reranker initialized via router: %s", picked)
         except Exception as exc:
             logger.warning("LLM reranker initialization failed: %s", exc)
 

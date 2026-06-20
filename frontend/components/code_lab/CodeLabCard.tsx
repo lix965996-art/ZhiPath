@@ -6,13 +6,14 @@ import {
   CheckCircle2,
   Code2,
   Copy,
+  Lightbulb,
   Loader2,
   Play,
   RotateCcw,
   Terminal,
 } from "lucide-react";
-import type { CodeLabResource, CodeLabRunResult, CodeLabSnippet } from "@/lib/api";
-import { runCCode } from "@/lib/api";
+import type { CodeLabCoach, CodeLabResource, CodeLabRunResult, CodeLabSnippet } from "@/lib/api";
+import { coachCodeLab, runCCode } from "@/lib/api";
 
 interface CodeLabCardProps {
   codeLab: CodeLabResource;
@@ -120,7 +121,7 @@ function structGate(code: string): StructGate {
 
 export function CodeLabCard({ codeLab, onVerify }: CodeLabCardProps) {
   const cSnippets = useMemo(
-    () => (codeLab.snippets || []).map((snippet, index) => prepareSnippet(snippet)),
+    () => (codeLab.snippets || []).map((snippet) => prepareSnippet(snippet)),
     [codeLab.snippets],
   );
   const [activeIdx, setActiveIdx] = useState(0);
@@ -130,6 +131,9 @@ export function CodeLabCard({ codeLab, onVerify }: CodeLabCardProps) {
   const [runResult, setRunResult] = useState<CodeLabRunResult | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [checkedOnce, setCheckedOnce] = useState(false);
+  const [coach, setCoach] = useState<CodeLabCoach | null>(null);
+  const [coaching, setCoaching] = useState(false);
+  const [coachError, setCoachError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const snippet = cSnippets[activeIdx];
@@ -137,8 +141,45 @@ export function CodeLabCard({ codeLab, onVerify }: CodeLabCardProps) {
   const highlighted = useMemo(() => editing.split("\n").map(highlightC), [editing]);
   const lineCount = editing.split("\n").length;
 
-  const logicPassed = !!runResult && runResult.matched_expected === true;
+  const logicPassed = !!runResult && runResult.matched_expected === true && gate.ok;
   const noCompiler = runResult?.reason === "no_compiler";
+
+  // 可点拨 = 真跑过一轮、没通过，且不是「无编译器 / 被安全护栏拦截」这类无从点拨的情况。
+  const coachable =
+    checkedOnce && !checking && !!runResult && !logicPassed &&
+    runResult.reason !== "no_compiler" && runResult.reason !== "blocked";
+
+  const coachReason = !runResult
+    ? "wrong_output"
+    : runResult.reason === "compile_error"
+      ? "compile_error"
+      : runResult.timed_out || runResult.reason === "timeout"
+        ? "timeout"
+        : runResult.reason === "runtime_error"
+          ? "runtime_error"
+          : "wrong_output";
+
+  const handleCoach = async () => {
+    if (!runResult) return;
+    setCoaching(true);
+    setCoachError(null);
+    try {
+      const c = await coachCodeLab({
+        code: editing,
+        description: snippet?.description ?? "",
+        expected_output: snippet?.expected_output ?? "",
+        reason: coachReason,
+        stderr: runResult.stderr ?? "",
+        diff: runResult.diff ?? [],
+      });
+      if (c) setCoach(c);
+      else setCoachError("导师暂时无法点拨（未配置可用模型），可在设置里检查模型凭据后重试。");
+    } catch (err) {
+      setCoachError((err as Error).message);
+    } finally {
+      setCoaching(false);
+    }
+  };
 
   // 切换/缩放 snippet 时，把 activeIdx 收敛到合法范围。
   useEffect(() => {
@@ -156,17 +197,14 @@ export function CodeLabCard({ codeLab, onVerify }: CodeLabCardProps) {
     setRunResult(null);
     setRunError(null);
     setCheckedOnce(false);
+    setCoach(null);
+    setCoachError(null);
   }, [activeIdx, cSnippets]);
 
   const handleCheck = async () => {
     const runIdx = activeIdx;
     setCheckedOnce(true);
-    if (!gate.ok) {
-      setRunResult(null);
-      setRunError(gate.reasons.join("；"));
-      onVerify?.(runIdx, false);
-      return;
-    }
+    // 总是真编译真运行（不再因 TODO/结构在客户端拦截），让学生看到真实的编译运行结果。
     setChecking(true);
     setRunError(null);
     try {
@@ -175,8 +213,8 @@ export function CodeLabCard({ codeLab, onVerify }: CodeLabCardProps) {
         stdin: snippet?.test_input ?? "",
         expected_output: snippet?.expected_output ?? "",
       });
-      // 只有真正的逻辑通过（实际输出==期望）才上报通过；结果只在仍停留在该 tab 时展示。
-      onVerify?.(runIdx, res.matched_expected === true);
+      // 通过 = 实际输出==期望 且 结构达标（防 printf 作弊 / 未补全 TODO）。
+      onVerify?.(runIdx, res.matched_expected === true && gate.ok);
       if (activeIdxRef.current === runIdx) setRunResult(res);
     } catch (err) {
       onVerify?.(runIdx, false);
@@ -191,6 +229,8 @@ export function CodeLabCard({ codeLab, onVerify }: CodeLabCardProps) {
     setRunResult(null);
     setRunError(null);
     setCheckedOnce(false);
+    setCoach(null);
+    setCoachError(null);
   };
 
   const handleCopy = async () => {
@@ -300,6 +340,8 @@ export function CodeLabCard({ codeLab, onVerify }: CodeLabCardProps) {
                   setCheckedOnce(false);
                   setRunResult(null);
                   setRunError(null);
+                  setCoach(null);
+                  setCoachError(null);
                 }}
                 onScroll={handleScroll}
                 className="relative z-10 block w-full resize-none bg-transparent py-4 pr-4 font-mono text-[12px] leading-[22px] text-transparent caret-white outline-none"
@@ -421,6 +463,15 @@ export function CodeLabCard({ codeLab, onVerify }: CodeLabCardProps) {
         logicPassed={logicPassed}
       />
 
+      {coachable && (
+        <CoachPanel
+          coach={coach}
+          coaching={coaching}
+          coachError={coachError}
+          onCoach={handleCoach}
+        />
+      )}
+
       {codeLab.practice_tasks?.length ? (
         <div className="border-t border-[var(--border)] bg-[var(--muted)]/30 px-4 py-3">
           <p className="mb-2 text-[11px] font-semibold text-[var(--muted-foreground)]">练习目标</p>
@@ -474,6 +525,24 @@ function RunPanel({
       <OutputBox tone="ok" title="逻辑通过">
         <pre className="whitespace-pre-wrap font-mono text-[12px] leading-5 text-emerald-300">
           {`> 程序实际输出与期望一致，逻辑判定通过。\n${runResult.stdout || ""}`}
+        </pre>
+      </OutputBox>
+    );
+  }
+
+  // 输出对上了，但结构未达标（仍有 TODO / 是 printf 清单）—— 真编译真运行过，只是不算通过
+  if (runResult.matched_expected === true && !gate.ok) {
+    return (
+      <OutputBox tone="warn" title="跑通了，但还要补全">
+        <pre className="whitespace-pre-wrap font-mono text-[12px] leading-5 text-amber-200">
+          {[
+            "> 程序已真实编译并运行，输出与期望一致。",
+            `> 但：${gate.reasons.join("；")}`,
+            "> 请补全为真实逻辑后再判定通过。",
+            "",
+            "—— 实际输出 ——",
+            runResult.stdout || "（无输出）",
+          ].join("\n")}
         </pre>
       </OutputBox>
     );
@@ -569,6 +638,69 @@ function OutputBox({
         <Terminal size={13} className="mt-0.5 shrink-0 text-slate-500" />
         {children}
       </div>
+    </div>
+  );
+}
+
+// ── 导师点拨：失败时显式求助，只给方向不给答案（对应简答题的「导师点评」） ──────────
+function CoachPanel({
+  coach,
+  coaching,
+  coachError,
+  onCoach,
+}: {
+  coach: CodeLabCoach | null;
+  coaching: boolean;
+  coachError: string | null;
+  onCoach: () => void;
+}) {
+  return (
+    <div className="border-t border-[var(--border)] bg-[var(--card)] px-4 py-3">
+      {!coach && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[12px] text-[var(--muted-foreground)]">
+            {coachError ?? "卡住了？让导师点你一下 —— 只指方向、不直接给答案。"}
+          </p>
+          <button
+            type="button"
+            onClick={onCoach}
+            disabled={coaching}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-1.5 text-[12px] font-semibold text-cyan-700 transition hover:bg-cyan-100 disabled:opacity-60"
+          >
+            {coaching ? <Loader2 size={12} className="animate-spin" /> : <Lightbulb size={12} />}
+            {coachError ? "再试一次" : "请导师点拨"}
+          </button>
+        </div>
+      )}
+
+      {coach && (
+        <div className="space-y-2 rounded-xl border border-cyan-200 bg-cyan-50/60 p-3">
+          <div className="flex items-center gap-1.5 text-[12px] font-semibold text-cyan-800">
+            <Lightbulb size={13} />
+            导师点拨
+            {coach.focus ? (
+              <span className="ml-1 rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-medium text-cyan-700">
+                {coach.focus}
+              </span>
+            ) : null}
+          </div>
+          {coach.diagnosis ? (
+            <p className="rounded-md bg-white/70 px-2.5 py-1.5 text-[12px] leading-5 text-[var(--foreground)]/85">
+              <span className="font-medium">问题在哪：</span>
+              {coach.diagnosis}
+            </p>
+          ) : null}
+          {coach.hint ? (
+            <p className="rounded-md bg-white/70 px-2.5 py-1.5 text-[12px] leading-5 text-cyan-900">
+              <span className="font-medium">试试看：</span>
+              {coach.hint}
+            </p>
+          ) : null}
+          <p className="text-[10px] text-[var(--muted-foreground)]">
+            改完代码后再点「检查代码」重新判定。
+          </p>
+        </div>
+      )}
     </div>
   );
 }

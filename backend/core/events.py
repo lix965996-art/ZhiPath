@@ -27,6 +27,8 @@ class EventType(str, Enum):
     LOOP_STEP = "loop_step"
     # API 配置健康状态（429/认证失败等）
     CREDENTIAL_HEALTH = "credential_health"
+    # 对话内联动画讲解视频（命中模板时由 chat 能力 emit，前端在气泡里内嵌播放）
+    VIDEO = "video"
 
 
 @dataclass

@@ -20,8 +20,11 @@ class LLMConfig:
 
 @dataclass
 class EmbeddingConfig:
-    provider: str = "huggingface"
+    provider: str = "huggingface"  # "huggingface"(本地, 需 torch) | "dashscope"/"openai"(API, 免 torch)
     model_name: str = "sentence-transformers/all-mpnet-base-v2"
+    dimensions: int = 768          # API embedding 输出维度，必须与 pgvector 列维度一致
+    base_url: str | None = None
+    api_key_env: str | None = None
 
 
 @dataclass

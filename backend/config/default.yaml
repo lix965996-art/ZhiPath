@@ -1,5 +1,7 @@
 llm:
-  default_profile: deepseek-chat
+  # 赛题硬性要求接入科大讯飞工具：默认链路走讯飞星火，缺凭据时由 ModelRouter
+  # 按 fallback 自动回退到 deepseek 等（详见 base/model_router.py）。
+  default_profile: iflytek-spark-pro
   profiles:
     # ────── DeepSeek (主用) ──────
     # 官方真实模型名：deepseek-chat (V3) / deepseek-reasoner (R1)
@@ -71,9 +73,14 @@ iflytek_tts:
   voice: xiaoyan
   enabled_by_default: true
 
+# 知识库向量：默认走讯飞同体系的 DashScope text-embedding-v3（中文原生、免 torch、768 维
+# 与 pgvector 列一致）。本机 torch 损坏时也能用；如需本地模型改 provider: huggingface。
 embedding:
-  provider: huggingface
-  model_name: sentence-transformers/all-mpnet-base-v2
+  provider: dashscope
+  model_name: text-embedding-v3
+  dimensions: 768
+  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  api_key_env: DASHSCOPE_API_KEY
 
 search:
   provider: duckduckgo
@@ -92,8 +99,10 @@ rag:
   #        llm         = 调用 LLM 做相关性打分（无需额外模型下载）
   #        none        = 禁用重排序
   reranker:
-    enabled: false   # 演示时关闭，避免首次加载 cross-encoder 模型超时
-    strategy: crossencoder
+    # 默认关：向量检索(中文 API embedding)已足够准，开 LLM 重排会给每次检索加若干 LLM
+    # 调用(~数秒)，不划算。需要更高精度可置 true（strategy=llm 免 torch，经 ModelRouter 走有 key 的模型）。
+    enabled: false
+    strategy: llm
     model_name: cross-encoder/ms-marco-MiniLM-L-6-v2
     overfetch_factor: 3   # 先取 k×3 候选，重排序后截断到 k
     max_length: 512

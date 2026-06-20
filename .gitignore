@@ -12,5 +12,6 @@ data/
 *.sqlite3
 *.tsbuildinfo
 *.log
+*.marker
 .vscode/
 .idea/

@@ -78,7 +78,7 @@ export default function AnalyticsPage() {
         {sessions.length === 0 ? (
           <EmptyStateGuide
             title="尚无会话数据"
-            hint="学习分析需要至少 1 个会话才能展示。最快的方式是点下方一键填充演示数据。"
+            hint="学习分析的数据全部来自你的真实使用。去工作台发起一次资源生成、或完成一套测验，知识图谱、掌握度热力图和复习计划就会自动出现。"
           />
         ) : (
           <section className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -86,13 +86,13 @@ export default function AnalyticsPage() {
               <h2 className="text-sm font-semibold text-slate-900">会话选择</h2>
               <span className="text-xs text-slate-500">共 {sessions.length} 个会话</span>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {sessions.map((s) => (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {sessions.slice(0, 5).map((s) => (
                 <button
                   key={s.id}
                   type="button"
                   onClick={() => setActiveSession(s.id)}
-                  className={`rounded-full border px-3 py-1 text-xs transition ${
+                  className={`max-w-[220px] truncate rounded-full border px-3 py-1 text-xs transition ${
                     activeSession === s.id
                       ? "border-blue-400 bg-blue-50 text-blue-700"
                       : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
@@ -101,6 +101,22 @@ export default function AnalyticsPage() {
                   {s.title || s.id.slice(0, 8)}
                 </button>
               ))}
+              {sessions.length > 5 ? (
+                <select
+                  value={activeSession || ""}
+                  onChange={(e) => setActiveSession(e.target.value)}
+                  className="max-w-[240px] truncate rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none hover:bg-slate-100"
+                >
+                  <option value="" disabled>
+                    更多会话…（共 {sessions.length}）
+                  </option>
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.title || s.id.slice(0, 8)}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
             </div>
           </section>
         )}

@@ -36,6 +36,7 @@ class ResourcePackageStore:
         mermaid: dict[str, Any] | None = None,
         case_study: dict[str, Any] | None = None,
         audio_url: str | None = None,
+        video: dict[str, Any] | None = None,
         citation_sources: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         profile = learner_profile or {}
@@ -58,6 +59,7 @@ class ResourcePackageStore:
             mermaid = mermaid or old_res.get("mermaid") or None
             case_study = case_study or old_res.get("case_study") or None
             audio_url = audio_url or (old_res.get("micro_lecture", {}) or {}).get("audio_url")
+            video = video or old_res.get("video_lesson") or None
             logger.info(
                 "Merging into existing package %s (topic=%s, v%d)",
                 package_id, topic, regeneration_count,
@@ -134,6 +136,7 @@ class ResourcePackageStore:
                 "code_lab": code_lab or {},
                 "mermaid": mermaid or {},
                 "case_study": case_study or {},
+                "video_lesson": video or {},
             },
             "assets": self._build_assets(
                 exam_summary,
@@ -144,6 +147,7 @@ class ResourcePackageStore:
                 mermaid=mermaid,
                 case_study=case_study,
                 audio_url=audio_url,
+                video=video,
             ),
             # ---- 真实可追溯字段 (替代前端启发式推断) ----
             "generated_for_stage": generated_for_stage,
@@ -844,6 +848,7 @@ class ResourcePackageStore:
         mermaid: dict[str, Any] | None = None,
         case_study: dict[str, Any] | None = None,
         audio_url: str | None = None,
+        video: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         assets: list[dict[str, Any]] = []
         # 微讲义始终产出（由模板方法 _build_micro_lecture 生成）
@@ -888,6 +893,15 @@ class ResourcePackageStore:
                 "label": "讲义音频 (讯飞 TTS)",
                 "status": "ready",
                 "url": audio_url,
+            })
+        if isinstance(video, dict) and video.get("url"):
+            provider = video.get("narration_provider") or "讯飞 TTS"
+            assets.append({
+                "type": "video",
+                "label": f"动画讲解视频 (Manim + {provider})",
+                "status": "ready",
+                "url": video["url"],
+                "title": video.get("title", "动画讲解视频"),
             })
         if isinstance(code_lab, dict) and code_lab.get("snippets"):
             assets.append({
@@ -966,6 +980,12 @@ class ResourcePackageStore:
             "TCP",
             "IP 子网划分",
             "指令流水线",
+            "快速排序",
+            "快排",
+            "二分查找",
+            "折半查找",
+            "页面置换",
+            "链表反转",
         ]
         lower_prompt = source_prompt.lower()
         for topic in known_topics:

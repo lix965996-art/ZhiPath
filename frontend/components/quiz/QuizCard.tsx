@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle2, XCircle, Send } from "lucide-react";
+import { CheckCircle2, XCircle, Send, Lightbulb, AlertTriangle } from "lucide-react";
+import type { ShortAnswerFeedback } from "@/lib/api";
 
 interface QuizQuestion {
   question: string;
@@ -16,10 +17,13 @@ interface QuizCardProps {
   questions: QuizQuestion[];
   onSubmit: (answers: { question_index: number; answer: number | boolean | string | number[] }[]) => void;
   results?: { correct: boolean; explanation?: string }[];
+  shortAnswerFeedback?: ShortAnswerFeedback[];
   disabled?: boolean;
 }
 
-export function QuizCard({ questions, onSubmit, results, disabled }: QuizCardProps) {
+export function QuizCard({ questions, onSubmit, results, shortAnswerFeedback, disabled }: QuizCardProps) {
+  // 简答题逐点点评：按 flatten 后的题目下标索引
+  const saFeedbackByIndex = new Map((shortAnswerFeedback ?? []).map((f) => [f.index, f]));
   const [answers, setAnswers] = useState<Record<number, number | boolean | string | number[]>>({});
   const [submitted, setSubmitted] = useState(false);
 
@@ -180,9 +184,14 @@ export function QuizCard({ questions, onSubmit, results, disabled }: QuizCardPro
             {q._type === "short_answer" && (
               <div>
                 {showResult ? (
-                  <div className="rounded-lg border border-[var(--border)] bg-gray-50 px-3 py-2 text-[12px]">
-                    <div className="mb-1 font-medium text-[var(--foreground)]">你的答案：</div>
-                    <div className="text-[var(--muted-foreground)]">{String(userAnswer ?? "")}</div>
+                  <div className="space-y-2">
+                    <div className="rounded-lg border border-[var(--border)] bg-gray-50 px-3 py-2 text-[12px]">
+                      <div className="mb-1 font-medium text-[var(--foreground)]">你的答案：</div>
+                      <div className="whitespace-pre-line text-[var(--muted-foreground)]">{String(userAnswer ?? "")}</div>
+                    </div>
+                    {saFeedbackByIndex.has(idx) && (
+                      <ShortAnswerTutor fb={saFeedbackByIndex.get(idx)!} />
+                    )}
                   </div>
                 ) : (
                   <textarea
@@ -216,6 +225,69 @@ export function QuizCard({ questions, onSubmit, results, disabled }: QuizCardPro
           <Send size={14} />
           提交答案
         </button>
+      )}
+    </div>
+  );
+}
+
+// 简答题「导师点评」：得分 + 答到/漏掉/有误 + 诊断 + 引导追问。
+// 替代过去对简答题「只有对错、无任何讲评」的空白，正面回应「听懂≠会写、没人告诉我哪错了」。
+function ShortAnswerTutor({ fb }: { fb: ShortAnswerFeedback }) {
+  const pct = Math.round(fb.score * 100);
+  const scoreColor = fb.passed ? "text-emerald-700" : pct >= 40 ? "text-amber-700" : "text-red-700";
+  const barColor = fb.passed ? "bg-emerald-500" : pct >= 40 ? "bg-amber-500" : "bg-red-500";
+
+  return (
+    <div className="rounded-lg border border-cyan-200 bg-cyan-50/50 px-3 py-2.5 text-[12px]">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="flex items-center gap-1.5 font-semibold text-cyan-800">
+          <Lightbulb size={13} />
+          导师点评
+        </span>
+        <span className={`font-semibold ${scoreColor}`}>得分 {pct}</span>
+      </div>
+
+      <div className="mb-2 h-1.5 rounded-full bg-white/70">
+        <div className={`h-1.5 rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+
+      {(fb.covered.length > 0 || fb.missing.length > 0 || fb.errors.length > 0) && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {fb.covered.map((t, i) => (
+            <span key={`c${i}`} className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-800">
+              <CheckCircle2 size={10} />答到：{t}
+            </span>
+          ))}
+          {fb.missing.map((t, i) => (
+            <span key={`m${i}`} className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800">
+              <AlertTriangle size={10} />漏掉：{t}
+            </span>
+          ))}
+          {fb.errors.map((t, i) => (
+            <span key={`e${i}`} className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] text-red-800">
+              <XCircle size={10} />有误：{t}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {fb.diagnosis && (
+        <div className="rounded-md bg-white/70 px-2.5 py-1.5 leading-5 text-[var(--foreground)]/85">
+          <span className="font-medium">点评：</span>{fb.diagnosis}
+        </div>
+      )}
+
+      {fb.follow_up && (
+        <div className="mt-1.5 flex items-start gap-1.5 rounded-md bg-white/70 px-2.5 py-1.5 leading-5 text-cyan-900">
+          <Lightbulb size={12} className="mt-0.5 shrink-0 text-cyan-600" />
+          <span><span className="font-medium">想一想：</span>{fb.follow_up}</span>
+        </div>
+      )}
+
+      {fb.offline && (
+        <div className="mt-1.5 text-[10px] text-[var(--muted-foreground)]">
+          （评分服务暂不可用，离线粗判，联网后重交可获得逐点点评）
+        </div>
       )}
     </div>
   );

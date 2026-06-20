@@ -42,3 +42,6 @@ websocket-client>=1.7.0
 
 # PDF 学习周报
 reportlab>=4.0.0
+
+# 动画讲解视频生成（Manim 渲染知识点动画，配合 ffmpeg 合成；需系统已装 ffmpeg）
+manim>=0.18.0

@@ -262,7 +262,7 @@ export function NextActionCard({ sessionId, onPick }: Props) {
           </div>
         ) : (
           <p className="mt-5 text-[11px] text-[var(--muted-foreground)]">
-            还没有学习数据。开始一次对话或填充演示数据即可激活智能建议。
+            还没有学习数据。去工作台开始一次对话、生成资源或完成测验，智能建议就会激活。
           </p>
         )}
       </div>

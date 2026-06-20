@@ -19,7 +19,7 @@ from base.credential_context import (
 from core.context import UnifiedContext
 from core.events import EventType
 from runtime.orchestrator import ChatOrchestrator
-from services.guardrail import check_content_safety
+from services.guardrail import audit_text
 from services.knowledge_graph import KnowledgeGraph
 from services.session.store import SessionStore
 from services.memory.service import MemoryService
@@ -215,21 +215,56 @@ async def _handle_turn(ws: WebSocket, msg: dict) -> None:
 
     # 8/9) 下发 session_id + 流式转发
     await ws.send_json({"type": "session", "session_id": session_id})
+    await _emit_inline_video(ws, user_message, capability)
     assistant_response = await _stream_orchestrator(ws, context, session_id, capability, user_message)
 
     if assistant_response:
+        assistant_response = await _audit_output(ws, assistant_response)
         await session_store.add_message(session_id, "assistant", assistant_response)
 
 
+async def _emit_inline_video(ws: WebSocket, user_message: str, capability: str) -> None:
+    """命中可视化模板的问题（快排/二分/页面置换/链表反转），在文字回答前内联动画讲解视频。
+
+    与具体能力无关——智能路由/对话/动画讲解等路径都生效。resource_gen 走资源包，
+    不在此重复内联。缺 manim/ffmpeg/凭据时优雅降级。
+    """
+    if capability == "resource_gen":
+        return
+    try:
+        from services.video import generate_lesson_video, match_template
+
+        template_key = match_template(user_message)
+        if not template_key:
+            return
+        await ws.send_json({"type": "thinking", "content": f"命中可视化知识点，生成「{template_key}」动画讲解视频 ..."})
+        video = await asyncio.to_thread(generate_lesson_video, template_key, user_message)
+        if video:
+            await ws.send_json({
+                "type": "video",
+                "url": video["url"],
+                "title": video["title"],
+                "metadata": {
+                    "template": template_key,
+                    "provider": video.get("narration_provider"),
+                    "duration": video.get("duration"),
+                },
+            })
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("inline video skipped: %s", exc)
+
+
 async def _check_safety(ws: WebSocket, user_message: str) -> bool:
-    """输入安全检查，返回 True 表示安全可继续。"""
-    safety = check_content_safety(user_message)
+    """输入安全检查（本地词典 + 可选讯飞远程审核），返回 True 表示安全可继续。"""
+    safety = await audit_text(user_message, stage="input")
     if not safety.safe:
         await ws.send_json({
             "type": "guardrail",
+            "stage": "input",
             "severity": safety.severity,
             "reason": safety.reason,
             "matched": safety.matched,
+            "source": safety.source,
         })
         await ws.send_json({
             "type": "stream",
@@ -238,6 +273,27 @@ async def _check_safety(ws: WebSocket, user_message: str) -> bool:
         await ws.send_json({"type": "done"})
         return False
     return True
+
+
+async def _audit_output(ws: WebSocket, assistant_response: str) -> str:
+    """输出安全审核：对模型最终回答做一次复核。
+
+    仅在命中 warning/block 时下发 guardrail 事件（避免正常回答误报红条/toast）；
+    命中 block 时把落库内容替换为打码提示，避免违规内容入库。
+    """
+    safety = await audit_text(assistant_response, stage="output")
+    if safety.severity != "ok":
+        await ws.send_json({
+            "type": "guardrail",
+            "stage": "output",
+            "severity": safety.severity,
+            "reason": safety.reason,
+            "matched": safety.matched,
+            "source": safety.source,
+        })
+    if not safety.safe:
+        return "（该回答因命中内容安全策略已被拦截）"
+    return assistant_response
 
 
 async def _send_profile_evidence(ws: WebSocket, learner_profile: dict) -> None:
@@ -358,6 +414,13 @@ async def _forward_event(ws: WebSocket, event) -> None:
             "source": event.source,
             "error_code": event.metadata.get("error_code"),
             "message": event.metadata.get("message"),
+        })
+    elif event.type == EventType.VIDEO:
+        await ws.send_json({
+            "type": "video",
+            "url": event.content,
+            "title": event.metadata.get("title", ""),
+            "metadata": event.metadata,
         })
 
 

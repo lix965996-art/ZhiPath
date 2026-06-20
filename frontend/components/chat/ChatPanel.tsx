@@ -52,6 +52,7 @@ const Orbital3DStage = dynamic(() => import("@/components/visual/orbital3d/Orbit
 const LiveTelemetryHUD = dynamic(() => import("@/components/visual/LiveTelemetryHUD").then(m => ({ default: m.LiveTelemetryHUD })), { ssr: false, loading: () => null });
 const BrandTree = dynamic(() => import("@/components/visual/BrandTree").then(m => ({ default: m.BrandTree })), { ssr: false, loading: () => null });
 import { MessageBubble } from "./MessageBubble";
+import { ChatVideoCard } from "./ChatVideoCard";
 import { ChatInput, type CapabilityOption } from "./ChatInput";
 
 // 主界面只露 4 个能力。chat/goal/learning 后端仍注册，由 agentic 自动路由。
@@ -534,6 +535,7 @@ function ChatPanelInner() {
                         quizResult={isLastAssistant ? state.quizResult : undefined}
                         onQuizSubmit={isLastAssistant ? submitQuizAnswer : undefined}
                       />
+                      {msg.video && <ChatVideoCard video={msg.video} />}
                       {isLastAssistant && state.resourcePackage && (
                         <ResourcePackageCard pkg={state.resourcePackage} compact />
                       )}
@@ -568,6 +570,7 @@ function ChatPanelInner() {
                       isStreaming
                       thinking={state.streamingThinking}
                     />
+                    {state.streamingVideo && <ChatVideoCard video={state.streamingVideo} />}
                   </>
                 )}
 

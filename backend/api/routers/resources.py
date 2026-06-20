@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from services.code_lab.runner import run_c_code
+from services.code_lab.tutor import coach_code_lab
 from services.code_lab.verify import compare_outputs
 from services.exam.store import ExamStore
 from services.quiz.quiz_store import QuizStore
@@ -23,6 +24,15 @@ class CodeLabRunRequest(BaseModel):
     code: str = Field(min_length=1, description="学生提交的 C 源码")
     stdin: str = Field("", description="喂给程序 stdin 的内容，多数 408 题为空")
     expected_output: str = Field("", description="正确补全后的期望输出；非空时后端做逻辑比对")
+
+
+class CodeLabCoachRequest(BaseModel):
+    code: str = Field(min_length=1, description="学生提交且未通过的 C 源码")
+    description: str = Field("", description="任务说明")
+    expected_output: str = Field("", description="期望输出")
+    reason: str = Field("wrong_output", description="失败类型：compile_error/runtime_error/timeout/wrong_output")
+    stderr: str = Field("", description="编译/运行错误信息")
+    diff: list[str] = Field(default_factory=list, description="期望 vs 实际 的逐行差异")
 
 
 @router.get("")
@@ -79,3 +89,20 @@ async def run_code_lab(req: CodeLabRunRequest) -> dict[str, Any]:
         payload["matched_expected"] = False
         payload["diff"] = []
     return payload
+
+
+@router.post("/code-lab/coach")
+async def coach_code_lab_endpoint(req: CodeLabCoachRequest) -> dict[str, Any]:
+    """学生代码没通过时，主动求一次「导师点拨」：一条诊断 + 一条提示（不直接给答案）。
+
+    LLM 不可用 / 异常时返回 {"coach": null}，前端据此降级为不展示点拨块。
+    """
+    coach = await coach_code_lab(
+        description=req.description,
+        expected_output=req.expected_output,
+        code=req.code,
+        reason=req.reason,
+        stderr=req.stderr,
+        diff=req.diff,
+    )
+    return {"coach": coach.to_dict() if coach else None}

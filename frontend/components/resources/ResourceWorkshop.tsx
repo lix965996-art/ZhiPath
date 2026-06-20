@@ -7,6 +7,7 @@ import {
   BookOpen,
   Code2,
   Database,
+  Film,
   FileText,
   HelpCircle,
   Loader2,
@@ -29,10 +30,11 @@ import { FlashcardView } from "./FlashcardView";
 import { QuizView } from "./QuizView";
 import { CodeView } from "./CodeView";
 import { ResourceMindMap } from "./ResourceMindMap";
+import { VideoLessonView } from "./VideoLessonView";
 
 // ── Types ──────────────────────────────────────────────────────────
 
-type TabKey = "lecture" | "mindmap" | "flashcard" | "quiz" | "code";
+type TabKey = "lecture" | "video" | "mindmap" | "flashcard" | "quiz" | "code";
 
 interface TabDef {
   key: TabKey;
@@ -44,6 +46,7 @@ interface TabDef {
 
 const TABS: TabDef[] = [
   { key: "lecture", label: "微讲义", shortLabel: "讲义", icon: FileText, matchTypes: ["audio", "micro_lecture"] },
+  { key: "video", label: "动画视频", shortLabel: "视频", icon: Film, matchTypes: ["video"] },
   { key: "mindmap", label: "知识结构", shortLabel: "导图", icon: Network, matchTypes: ["mindmap"] },
   { key: "flashcard", label: "记忆卡", shortLabel: "闪卡", icon: BookOpen, matchTypes: ["flashcards"] },
   { key: "quiz", label: "练习题", shortLabel: "习题", icon: HelpCircle, matchTypes: ["quiz", "exam"] },
@@ -55,6 +58,11 @@ const TAB_META: Record<TabKey, { title: string; detail: string; action: string }
     title: "先把概念读顺",
     detail: "按考点顺序看微讲义，不懂的段落直接让 AI 老师换一种讲法。",
     action: "解释这份讲义",
+  },
+  video: {
+    title: "先看动画建直觉",
+    detail: "动画把算法每一步画出来并配旁白。看完一步暂停，回到讲义或代码区验证。",
+    action: "讲解这个动画",
   },
   mindmap: {
     title: "先看主干，再补薄弱点",
@@ -350,6 +358,7 @@ function TabContent({ pkg, tab, onNavigate }: {
   let content: ReactNode;
   switch (tab) {
     case "lecture": content = <LectureView pkg={pkg} />; break;
+    case "video": content = <VideoLessonView pkg={pkg} />; break;
     case "mindmap": content = <MindmapView pkg={pkg} />; break;
     case "flashcard": content = <FlashcardView pkg={pkg} />; break;
     case "quiz": content = <QuizView pkg={pkg} />; break;

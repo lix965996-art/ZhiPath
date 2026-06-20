@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
 from services.mastery import DKTService, MasteryStore
 from services.profile.service import LearningProfileService
+from services.quiz.short_answer_grader import ShortAnswerGrade, grade_short_answer
 from services.srs import ReviewStore, extract_review_candidates_from_quiz
 from services.xapi import get_lrs
 
@@ -44,23 +46,20 @@ class QuizFeedbackService:
         # Build answer map: question_index -> user_answer
         answer_map = {a["question_index"]: a["answer"] for a in answers}
 
-        correct = 0
-        wrong_questions: list[dict[str, Any]] = []
+        # 简答题先用 LLM rubric 批改（一次、并发）；客观题走规则判分。
+        short_grades = await self._grade_short_answers(all_questions, answer_map)
 
-        for idx, q in enumerate(all_questions):
-            user_answer = answer_map.get(idx)
-            is_correct = self._check_answer(q, user_answer)
-            if is_correct:
-                correct += 1
-            else:
-                wrong_questions.append(q)
+        # 每题判对错只算一次，算分 / 错题 / BKT 观测 / 复习入队全部复用，避免重复判定。
+        correctness = [
+            self._is_correct(idx, q, answer_map.get(idx), short_grades)
+            for idx, q in enumerate(all_questions)
+        ]
+        correct = sum(1 for ok in correctness if ok)
+        wrong_questions = [q for q, ok in zip(all_questions, correctness) if not ok]
+        wrong_indices = [idx for idx, ok in enumerate(correctness) if not ok]
 
         accuracy = correct / total if total > 0 else 0
         wrong_topics = self._extract_wrong_topics(wrong_questions)
-        wrong_indices = [
-            idx for idx, q in enumerate(all_questions)
-            if not self._check_answer(q, answer_map.get(idx))
-        ]
 
         # Update profile
         if wrong_topics:
@@ -77,7 +76,7 @@ class QuizFeedbackService:
             if label:
                 observations.append({
                     "label": label,
-                    "correct": self._check_answer(q, answer_map.get(idx)),
+                    "correct": correctness[idx],
                 })
         mastery_snapshot = None
         dkt_snapshot = None
@@ -161,6 +160,11 @@ class QuizFeedbackService:
             "mastery_snapshot": mastery_snapshot,
             "dkt_snapshot": dkt_snapshot,
             "wrong_indices": wrong_indices,
+            # 简答题逐点点评：得分 + 答到/漏掉/错处 + 诊断 + 引导追问（供前端「做题导师」展示）
+            "short_answer_feedback": [
+                {"index": idx, **short_grades[idx].to_dict()}
+                for idx in sorted(short_grades)
+            ],
         }
 
     @staticmethod
@@ -176,6 +180,61 @@ class QuizFeedbackService:
                 q["_type"] = q_type
                 questions.append(q)
         return questions
+
+    @staticmethod
+    async def _grade_short_answers(
+        all_questions: list[dict[str, Any]],
+        answer_map: dict[int, Any],
+    ) -> dict[int, ShortAnswerGrade]:
+        """并发用 LLM rubric 批改所有简答题。LLM 取一次共享给各题；单题异常跳过（按判错处理）。"""
+        targets = [
+            (idx, q) for idx, q in enumerate(all_questions)
+            if q.get("_type") == "short_answer"
+        ]
+        if not targets:
+            return {}
+
+        llm = None
+        try:
+            from base.model_router import get_model_router
+
+            llm, _ = get_model_router().for_task("chat")
+        except Exception as exc:  # pragma: no cover - 优雅降级，grader 内部会转离线粗判
+            logger.warning("简答批改取 LLM 失败，逐题离线粗判：%s", exc)
+
+        results = await asyncio.gather(
+            *(
+                grade_short_answer(
+                    question=q.get("question", ""),
+                    expected_answer=q.get("expected_answer", ""),
+                    user_answer=str(answer_map.get(idx) or ""),
+                    llm=llm,
+                )
+                for idx, q in targets
+            ),
+            return_exceptions=True,
+        )
+
+        grades: dict[int, ShortAnswerGrade] = {}
+        for (idx, _q), res in zip(targets, results):
+            if isinstance(res, ShortAnswerGrade):
+                grades[idx] = res
+            else:  # pragma: no cover - grader 已内部兜底，这里只防御性记录
+                logger.warning("简答批改异常 idx=%s：%s", idx, res)
+        return grades
+
+    @staticmethod
+    def _is_correct(
+        idx: int,
+        question: dict[str, Any],
+        user_answer: Any,
+        short_grades: dict[int, ShortAnswerGrade],
+    ) -> bool:
+        """统一判对错入口：简答用 rubric 批改结果，其余题型走客观规则判分。"""
+        if question.get("_type") == "short_answer":
+            grade = short_grades.get(idx)
+            return bool(grade and grade.passed)
+        return QuizFeedbackService._check_answer(question, user_answer)
 
     @staticmethod
     def _check_answer(question: dict[str, Any], user_answer: Any) -> bool:
@@ -199,10 +258,8 @@ class QuizFeedbackService:
                 return user_answer == correct
             return str(user_answer).lower() == str(correct).lower()
 
-        if q_type == "short_answer":
-            expected = question.get("expected_answer", "")
-            return str(user_answer).strip().lower() == str(expected).strip().lower()
-
+        # short_answer 不在此判分：由 _is_correct 路由到 LLM rubric 批改（grade_short_answer）。
+        # 旧实现是「字符串完全相等」，等于只判照抄、不判会写，已移除。
         return False
 
     @staticmethod

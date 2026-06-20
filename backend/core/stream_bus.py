@@ -79,6 +79,15 @@ class StreamBus:
             metadata={"dimension": dimension, "evidence": evidence, **meta},
         ))
 
+    def video(self, url: str, title: str = "", **meta) -> None:
+        """对话内联动画讲解视频。前端在助手气泡里内嵌 <video> 播放。"""
+        self.emit(StreamEvent(
+            type=EventType.VIDEO,
+            content=url,
+            source="VideoGenerator",
+            metadata={"title": title, **meta},
+        ))
+
     def loop_step(self, step: str, status: str = "running", **meta) -> None:
         """Auto-Tutor 闭环单步进度。"""
         self.emit(StreamEvent(

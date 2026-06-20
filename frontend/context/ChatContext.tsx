@@ -24,12 +24,21 @@ import { ZhiPathWS } from "@/lib/ws";
 import { showError, showInfo } from "@/components/ui/Toast";
 import { updateCredentialHealth } from "@/lib/credentials";
 
+export interface ChatVideo {
+  url: string;
+  title: string;
+  template?: string;
+  provider?: string;
+  duration?: number;
+}
+
 interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
   thinking?: string[];
   result?: string;
+  video?: ChatVideo;
 }
 
 export interface AgentNodeState {
@@ -89,6 +98,7 @@ export interface ChatState {
   streamingContent: string;
   streamingThinking: string[];
   streamingResult: string;
+  streamingVideo: ChatVideo | null;
   activeStages: string[];
   error: string | null;
   agentNodes: Record<string, AgentNodeState>;
@@ -131,7 +141,8 @@ type ChatAction =
   | { type: "SET_SOURCES"; sources: KnowledgeSource[]; lowConfidence: boolean }
   | { type: "PROFILE_EVIDENCE"; dimension: string; value: string; evidence: string; turn: number }
   | { type: "LOOP_STEP"; step: string; status: string; metadata?: Record<string, unknown> }
-  | { type: "GUARDRAIL"; severity: string; reason: string; matched?: string[] };
+  | { type: "GUARDRAIL"; severity: string; reason: string; matched?: string[] }
+  | { type: "SET_VIDEO"; video: ChatVideo };
 
 const initialState: ChatState = {
   sessionId: "",
@@ -140,6 +151,7 @@ const initialState: ChatState = {
   streamingContent: "",
   streamingThinking: [],
   streamingResult: "",
+  streamingVideo: null,
   activeStages: [],
   error: null,
   agentNodes: {},
@@ -196,6 +208,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         streamingContent: "",
         streamingThinking: [],
         streamingResult: "",
+        streamingVideo: null,
         activeStages: [],
         error: null,
         agentNodes: {},
@@ -229,11 +242,13 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
               ? state.streamingThinking
               : undefined,
             result: state.streamingResult || undefined,
+            video: state.streamingVideo || undefined,
           },
         ]),
         streamingContent: "",
         streamingThinking: [],
         streamingResult: "",
+        streamingVideo: null,
         activeStages: [],
       };
     case "STREAM_CANCEL":
@@ -242,15 +257,18 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         isStreaming: false,
         messages: trimMessages([
           ...state.messages,
-          ...(state.streamingContent
+          ...(state.streamingContent || state.streamingVideo
             ? [
                 {
                   role: "assistant" as const,
-                  content: `${state.streamingContent}\n\n*(已停止生成)*`,
+                  content: state.streamingContent
+                    ? `${state.streamingContent}\n\n*(已停止生成)*`
+                    : "*(已停止生成)*",
                   timestamp: Date.now(),
                   thinking: state.streamingThinking.length
                     ? state.streamingThinking
                     : undefined,
+                  video: state.streamingVideo || undefined,
                 },
               ]
             : []),
@@ -258,6 +276,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         streamingContent: "",
         streamingThinking: [],
         streamingResult: "",
+        streamingVideo: null,
         activeStages: [],
       };
     case "ADD_THINKING":
@@ -383,6 +402,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
           timestamp: Date.now(),
         },
       };
+    case "SET_VIDEO":
+      return { ...state, streamingVideo: action.video };
     case "RESET":
       return initialState;
     default:
@@ -548,6 +569,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       });
       const reason = typeof data.reason === "string" ? data.reason : "命中安全策略";
       showInfo(`🛡 ${reason}`);
+    });
+
+    ws.on("video", (data) => {
+      const url = typeof data.url === "string" ? data.url : "";
+      if (!url) return;
+      const meta = (data.metadata as Record<string, unknown>) || {};
+      dispatch({
+        type: "SET_VIDEO",
+        video: {
+          url,
+          title: typeof data.title === "string" ? data.title : "动画讲解视频",
+          template: typeof meta.template === "string" ? meta.template : undefined,
+          provider: typeof meta.provider === "string" ? meta.provider : undefined,
+          duration: typeof meta.duration === "number" ? meta.duration : undefined,
+        },
+      });
     });
 
     ws.on("done", () => {

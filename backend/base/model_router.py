@@ -7,13 +7,32 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from base.credential_context import get_any_enabled_config, get_config_for_task
-from base.llm_factory import LLMFactory
+from base.llm_factory import LLMFactory, _PROVIDER_KEY_ENV
 
 logger = logging.getLogger(__name__)
+
+
+def _profile_has_key(profile_name: str) -> bool:
+    """判断 yaml profile 所需的 API Key 是否已在环境变量中配置。
+
+    用于路由候选预筛：缺 key 的候选直接跳过，让 fallback 真正生效
+    （否则 from_profile 会构造出无 key 的模型对象，运行期才失败、兜不住）。
+    未知 profile 或无需 key 的本地模型返回 True。
+    """
+    from config.loader import get_config
+
+    profile = get_config().llm.profiles.get(profile_name)
+    if profile is None:
+        return True
+    key_env = profile.api_key_env or _PROVIDER_KEY_ENV.get(profile.provider)
+    if not key_env:
+        return True
+    return bool(os.environ.get(key_env))
 
 
 @dataclass
@@ -26,41 +45,43 @@ class TaskRoute:
 
 # 任务名 → 模型路由表（profile 名必须与 config/default.yaml 中已定义的对应）
 _DEFAULT_ROUTES: dict[str, TaskRoute] = {
+    # 赛题硬性要求接入科大讯飞工具：学生侧对话与资源生成主链路默认走讯飞星火，
+    # 缺 XF_SPARK_API_PASSWORD 时按 fallback 自动回退到 deepseek 等，保证可运行。
     "chat": TaskRoute(
         name="chat",
-        primary="deepseek-chat",
-        fallbacks=["qwen-turbo", "qwen2.5-7b", "iflytek-spark-lite"],
-        description="日常导学对话，需要快和便宜",
+        primary="iflytek-spark-pro",
+        fallbacks=["deepseek-chat", "qwen-turbo", "qwen2.5-7b", "iflytek-spark-lite"],
+        description="日常导学对话：讯飞星火主链路",
     ),
     "structured": TaskRoute(
         name="structured",
-        primary="deepseek-chat",
-        fallbacks=["qwen-plus", "deepseek-v3-sf", "glm-4-9b"],
-        description="结构化 JSON 输出（quiz、flashcard、mermaid 等）",
+        primary="iflytek-spark-pro",
+        fallbacks=["deepseek-chat", "qwen-plus", "deepseek-v3-sf", "glm-4-9b"],
+        description="结构化 JSON 输出（quiz、flashcard、mermaid 等）：讯飞星火主链路",
     ),
     "long_form": TaskRoute(
         name="long_form",
-        primary="deepseek-chat",
-        fallbacks=["qwen-max", "qwen-plus", "deepseek-v3-sf"],
-        description="微讲义、长答案、报告类长文输出",
+        primary="iflytek-spark-pro",
+        fallbacks=["deepseek-chat", "qwen-max", "qwen-plus", "deepseek-v3-sf"],
+        description="微讲义、长答案、报告类长文输出：讯飞星火主链路",
     ),
     "reasoning": TaskRoute(
         name="reasoning",
         primary="deepseek-reasoner",
-        fallbacks=["deepseek-chat", "qwen-max", "deepseek-v3-sf"],
-        description="目标诊断、技能差距、闭环报告：要 reasoning",
+        fallbacks=["iflytek-spark-pro", "deepseek-chat", "qwen-max"],
+        description="目标诊断、技能差距、闭环报告：用 R1 深推理，回退讯飞",
     ),
     "code": TaskRoute(
         name="code",
         primary="deepseek-chat",
-        fallbacks=["qwen-plus", "deepseek-v3-sf", "qwen2.5-7b"],
-        description="CodeLab 等需要代码合成的任务",
+        fallbacks=["iflytek-spark-pro", "qwen-plus", "deepseek-v3-sf", "qwen2.5-7b"],
+        description="CodeLab 等代码合成任务：代码质量优先，回退讯飞",
     ),
     "mermaid": TaskRoute(
         name="mermaid",
-        primary="deepseek-chat",
-        fallbacks=["qwen-plus", "iflytek-spark-pro", "glm-4-9b"],
-        description="Mermaid / 流程图，对语法严格性要求高",
+        primary="iflytek-spark-pro",
+        fallbacks=["deepseek-chat", "qwen-plus", "glm-4-9b"],
+        description="Mermaid / 流程图，对语法严格性要求高：讯飞星火主链路",
     ),
 }
 
@@ -148,6 +169,9 @@ class ModelRouter:
             return model, default
 
         for candidate in [route.primary, *route.fallbacks]:
+            if not _profile_has_key(candidate):
+                self._log(task, candidate, "skip_no_api_key", False)
+                continue
             try:
                 model = LLMFactory.from_profile(candidate)
                 self._log(task, candidate, "yaml_selected", True)

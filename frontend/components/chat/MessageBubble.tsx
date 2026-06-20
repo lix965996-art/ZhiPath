@@ -195,11 +195,14 @@ export function MessageBubble({
       ]
     : [];
 
-  // Build results array for QuizCard from quizResult
+  // Build per-question results from the REAL submit response:
+  // - 用后端返回的 wrong_indices 精确标记每题对错（旧实现按位置 i<correct 把"前 N 题"涂绿，是错的）
+  // - explanation 直接取自题目本身
+  const wrongSet = new Set(quizResult?.wrong_indices ?? []);
   const quizResults = quizResult
-    ? Array.from({ length: quizQuestions.length }, (_, i) => ({
-        correct: i < quizResult.correct,
-        explanation: undefined as string | undefined,
+    ? quizQuestions.map((q, i) => ({
+        correct: quizResult.wrong_indices ? !wrongSet.has(i) : i < quizResult.correct,
+        explanation: q.explanation,
       }))
     : undefined;
   const shouldShowResponseBubble =
@@ -227,6 +230,7 @@ export function MessageBubble({
               questions={quizQuestions}
               onSubmit={onQuizSubmit}
               results={quizResults}
+              shortAnswerFeedback={quizResult?.short_answer_feedback}
               disabled={!!quizResult}
             />
             {quizResult && <QuizFeedback result={quizResult} />}

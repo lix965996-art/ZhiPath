@@ -46,6 +46,9 @@ def load_config() -> AppConfig:
     embedding = EmbeddingConfig(
         provider=embed_raw.get("provider", "huggingface"),
         model_name=embed_raw.get("model_name", "sentence-transformers/all-mpnet-base-v2"),
+        dimensions=int(embed_raw.get("dimensions", 768)),
+        base_url=embed_raw.get("base_url"),
+        api_key_env=embed_raw.get("api_key_env"),
     )
 
     # ── RAG / reranker / search config ──
