@@ -39,19 +39,19 @@ export function RemediationFeedback() {
 
   return (
     <LearningShell>
-      <header className="mb-6">
-        <p className="text-sm font-semibold text-rose-600">学习反馈</p>
-        <h1 className="mt-1 text-2xl font-bold">
+      <header className="mb-4">
+        <p className="text-xs font-semibold text-rose-600">学习反馈</p>
+        <h1 className="mt-1 text-lg font-semibold">
           {demo.bankerAttempts > 0 ? "发现一个关键误区" : "验证你的概念理解"}
         </h1>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-1 text-xs text-slate-500">
           系统不仅记录对错，还会判断错误原因并安排补救。
         </p>
       </header>
 
-      <div className={`grid gap-6 ${role === "showcase" ? "xl:grid-cols-[1fr_360px]" : ""}`}>
+      <div className={`grid gap-4 ${role === "showcase" ? "xl:grid-cols-[1fr_330px]" : ""}`}>
         <section className="space-y-5">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+          <article className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
                 <div className="text-xs font-semibold text-rose-600">常见错误判断</div>
@@ -66,7 +66,7 @@ export function RemediationFeedback() {
             </div>
           </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+          <article className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-center gap-2">
               <TriangleAlert size={19} className="text-amber-500" />
               <h2 className="font-semibold">错误诊断：概念边界混淆</h2>
@@ -82,7 +82,7 @@ export function RemediationFeedback() {
             </div>
           </article>
 
-          <article className="rounded-2xl border border-cyan-200 bg-cyan-50/60 p-5">
+          <article className="rounded-xl border border-cyan-200 bg-cyan-50/60 p-4">
             <div className="flex items-center gap-2 font-semibold text-cyan-900">
               <GitCompareArrows size={18} />
               学习路径已动态调整
@@ -92,7 +92,7 @@ export function RemediationFeedback() {
             </p>
           </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+          <article className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold text-blue-600">补救练习</p>

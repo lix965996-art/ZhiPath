@@ -54,10 +54,10 @@ export function LearningProgressDashboard() {
 
   return (
     <LearningShell>
-      <header className="mb-7">
-        <p className="text-sm font-semibold text-blue-600">过去 7 天</p>
-        <h1 className="mt-1 text-2xl font-bold">学习诊断与进度</h1>
-        <p className="mt-2 text-sm text-slate-500">
+      <header className="mb-4 border-b border-slate-200 pb-4">
+        <p className="text-xs font-semibold text-blue-600">过去 7 天</p>
+        <h1 className="mt-1 text-lg font-semibold">学习诊断与进度</h1>
+        <p className="mt-1 text-xs text-slate-500">
           先回答学了什么、哪里进步、哪里仍需补救，以及下一步做什么。
         </p>
       </header>
@@ -69,13 +69,13 @@ export function LearningProgressDashboard() {
         <Metric icon={Target} label="下一步" value="完成补救练习" />
       </section>
 
-      <section className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <article className="rounded-2xl border border-slate-200 bg-white p-5">
+      <section className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <article className="rounded-xl border border-slate-200 bg-white p-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">掌握变化</h2>
             <span className="text-xs text-slate-500">操作系统 · 当前阶段</span>
           </div>
-          <div className="mt-6 space-y-5">
+          <div className="mt-4 space-y-4">
             <MasteryRow label="死锁必要条件" value={78} />
             <MasteryRow label="资源分配图" value={demo.remedialPassed ? 68 : 42} />
             <MasteryRow label="银行家算法" value={demo.safeSequence.length === 5 ? 72 : 38} />
@@ -90,7 +90,7 @@ export function LearningProgressDashboard() {
         </article>
 
         <aside className="space-y-4">
-          <section className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
+          <section className="rounded-xl border border-rose-200 bg-rose-50 p-4">
             <div className="text-xs font-semibold text-rose-600">仍需突破</div>
             <h2 className="mt-2 text-lg font-semibold">死锁预防与避免的概念边界</h2>
             <p className="mt-2 text-sm leading-6 text-rose-900">
@@ -104,12 +104,12 @@ export function LearningProgressDashboard() {
             </Link>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+          <section className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Clock3 size={17} className="text-blue-600" />
               今日复习
             </div>
-            <div className="mt-3 text-3xl font-bold">{due || 3}</div>
+            <div className="mt-2 text-xl font-bold">{due || 3}</div>
             <div className="mt-1 text-xs text-slate-500">张到期卡片 · 约 5 分钟</div>
           </section>
         </aside>
@@ -130,7 +130,7 @@ function Metric({
   alert?: boolean;
 }) {
   return (
-    <div className={`rounded-2xl border bg-white p-5 ${alert ? "border-rose-200" : "border-slate-200"}`}>
+    <div className={`rounded-xl border bg-white p-4 ${alert ? "border-rose-200" : "border-slate-200"}`}>
       <Icon size={18} className={alert ? "text-rose-600" : "text-blue-600"} />
       <div className="mt-4 text-xs text-slate-500">{label}</div>
       <div className={`mt-1 text-lg font-bold ${alert ? "text-rose-700" : ""}`}>{value}</div>

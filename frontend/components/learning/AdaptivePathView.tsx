@@ -24,11 +24,11 @@ export function AdaptivePathView() {
 
   return (
     <LearningShell>
-      <header className="mb-7 flex flex-wrap items-end justify-between gap-4">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <div>
           <p className="text-sm font-semibold text-blue-600">操作系统 · 当前阶段</p>
-          <h1 className="mt-1 text-2xl font-bold">学习路径</h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <h1 className="mt-1 text-lg font-semibold">学习路径</h1>
+          <p className="mt-1 text-xs text-slate-500">
             路径不是固定课程表，会根据诊断和练习结果持续调整。
           </p>
         </div>
@@ -40,8 +40,8 @@ export function AdaptivePathView() {
         </Link>
       </header>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6">
-        <div className="grid gap-6 lg:grid-cols-2">
+      <section className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="grid gap-4 lg:grid-cols-2">
           <PathColumn
             title="原学习计划"
             muted={adjusted}
@@ -73,7 +73,7 @@ export function AdaptivePathView() {
         </div>
       </section>
 
-      <section className="mt-5 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-5">
+      <section className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50/70 p-4">
         <div className="flex items-center gap-2 font-semibold text-cyan-900">
           <GitCompareArrows size={18} />
           {adjusted ? "为什么发生调整" : "什么时候会调整"}

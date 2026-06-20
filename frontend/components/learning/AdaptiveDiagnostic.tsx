@@ -111,14 +111,14 @@ export function AdaptiveDiagnostic() {
 
   return (
     <LearningShell>
-      <div className={`grid gap-6 ${role === "showcase" ? "xl:grid-cols-[1fr_360px]" : ""}`}>
+      <div className={`grid gap-4 ${role === "showcase" ? "xl:grid-cols-[1fr_320px]" : ""}`}>
         <section>
-          <header className="mb-6">
-            <p className="text-sm font-semibold text-cyan-700">自适应诊断</p>
+          <header className="mb-4">
+            <p className="text-xs font-semibold text-cyan-700">自适应诊断</p>
             <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h1 className="text-2xl font-bold">操作系统 · 基础定位</h1>
-                <p className="mt-2 text-sm text-slate-500">
+                <h1 className="text-lg font-semibold">操作系统 · 基础定位</h1>
+                <p className="mt-1 text-xs text-slate-500">
                   不会可以选择“不确定”，这比猜答案更有助于系统判断。
                 </p>
               </div>
@@ -134,16 +134,16 @@ export function AdaptiveDiagnostic() {
             </div>
           </header>
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <article className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="text-xs font-semibold text-blue-600">{current.topic}</div>
-            <h2 className="mt-3 text-lg font-semibold leading-8">{current.question}</h2>
-            <div className="mt-6 space-y-3">
+            <h2 className="mt-2 text-base font-semibold leading-7">{current.question}</h2>
+            <div className="mt-4 space-y-2">
               {current.options.map((option, optionIndex) => (
                 <button
                   key={option}
                   type="button"
                   onClick={() => setSelected(optionIndex)}
-                  className={`flex w-full items-center gap-3 rounded-xl border px-4 py-4 text-left text-sm ${
+                  className={`flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left text-sm ${
                     selected === optionIndex
                       ? "border-blue-500 bg-blue-50 text-blue-900 ring-1 ring-blue-200"
                       : "border-slate-200 hover:border-blue-200 hover:bg-slate-50"
@@ -156,7 +156,7 @@ export function AdaptiveDiagnostic() {
                 </button>
               ))}
             </div>
-            <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
+            <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
               <button
                 type="button"
                 onClick={() => setSelected(null)}
@@ -177,7 +177,7 @@ export function AdaptiveDiagnostic() {
         </section>
 
         {role === "showcase" ? (
-          <aside className="rounded-2xl border border-violet-200 bg-white p-5">
+          <aside className="rounded-xl border border-violet-200 bg-white p-4">
             <div className="flex items-center gap-2 font-semibold text-violet-800">
               <BrainCircuit size={18} />
               演示视图 · 选题依据

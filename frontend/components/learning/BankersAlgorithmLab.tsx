@@ -105,13 +105,13 @@ export function BankersAlgorithmLab() {
 
   return (
     <LearningShell>
-      <header className="mb-6">
+      <header className="mb-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-blue-600">
               今日任务 2/3 · 互动学习
             </p>
-            <h1 className="mt-1 text-2xl font-bold">银行家算法安全序列实验</h1>
+            <h1 className="mt-1 text-lg font-semibold">银行家算法安全序列实验</h1>
           </div>
           <div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm">
             当前步骤：构造安全序列
@@ -133,9 +133,9 @@ export function BankersAlgorithmLab() {
         </div>
       </header>
 
-      <div className={`grid gap-6 ${role === "showcase" ? "xl:grid-cols-[1fr_360px]" : "xl:grid-cols-[1fr_300px]"}`}>
+      <div className={`grid gap-4 ${role === "showcase" ? "xl:grid-cols-[1fr_330px]" : "xl:grid-cols-[1fr_280px]"}`}>
         <section className="space-y-5">
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <article className="rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
               <div>
                 <div className="text-xs text-slate-500">当前可用资源 Available</div>
@@ -148,7 +148,7 @@ export function BankersAlgorithmLab() {
                       <div className="text-xs text-slate-500">
                         {String.fromCharCode(65 + index)}
                       </div>
-                      <div className="text-xl font-bold text-blue-700">{value}</div>
+                      <div className="text-lg font-bold text-blue-700">{value}</div>
                     </div>
                   ))}
                 </div>
@@ -211,7 +211,7 @@ export function BankersAlgorithmLab() {
             </div>
           </article>
 
-          <article className="rounded-2xl border border-slate-200 bg-white p-5">
+          <article className="rounded-xl border border-slate-200 bg-white p-4">
             <h2 className="font-semibold">你构造的安全序列</h2>
             <div className="mt-4 flex min-h-14 flex-wrap items-center gap-2">
               {sequence.length === 0 ? (
@@ -234,7 +234,7 @@ export function BankersAlgorithmLab() {
 
         <aside className="space-y-4">
           <section
-            className={`rounded-2xl border p-5 ${
+            className={`rounded-xl border p-4 ${
               message.includes("不能")
                 ? "border-rose-200 bg-rose-50"
                 : complete
@@ -261,7 +261,7 @@ export function BankersAlgorithmLab() {
           </section>
 
           {complete ? (
-            <section className="rounded-2xl border border-emerald-200 bg-white p-5">
+            <section className="rounded-xl border border-emerald-200 bg-white p-4">
               <ShieldCheck size={24} className="text-emerald-600" />
               <h2 className="mt-3 font-semibold">已找到安全序列</h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">

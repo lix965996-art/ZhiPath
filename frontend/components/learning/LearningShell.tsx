@@ -77,7 +77,7 @@ export function LearningShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="lg:pl-[238px]">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-[#e4e9f2] bg-white/90 px-4 backdrop-blur-xl lg:px-8">
+        <header className="sticky top-0 z-20 flex h-12 items-center justify-between border-b border-[#e4e9f2] bg-white/90 px-4 backdrop-blur-xl lg:px-6">
           <Link href="/today" className="flex items-center gap-2 font-semibold lg:hidden">
             <GraduationCap size={20} className="text-blue-600" />
             ZhiPath
@@ -90,7 +90,7 @@ export function LearningShell({ children }: { children: React.ReactNode }) {
             <RoleSwitcher compact />
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1320px] px-4 py-6 lg:px-8 lg:py-8">
+        <main className="mx-auto w-full max-w-[1180px] px-4 py-4 lg:px-6 lg:py-5">
           {children}
         </main>
       </div>

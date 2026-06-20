@@ -51,23 +51,20 @@ export function TodayLearningDashboard() {
 
   return (
     <LearningShell>
-      <section className="mb-7 flex flex-wrap items-end justify-between gap-4">
+      <section className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <div>
-          <p className="text-sm font-medium text-blue-600">6 月 20 日 · 今日计划</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">
-            准备开始今天的学习
-          </h1>
-          <p className="mt-2 text-sm text-slate-500">
-            系统已根据最近的答题表现安排学习顺序，你只需要从第一项开始。
+          <h1 className="text-lg font-semibold tracking-tight">今日学习</h1>
+          <p className="mt-1 text-xs text-slate-500">
+            3 项任务 · 预计 32 分钟 · 根据最近答题表现排序
           </p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
           今日进度 <b className="ml-2 text-blue-600">{completed}/3</b>
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="space-y-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <section className="space-y-3">
           <TaskCard
             index={1}
             label="到期复习"
@@ -97,18 +94,18 @@ export function TodayLearningDashboard() {
           />
         </section>
 
-        <aside className="space-y-4">
-          <section className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-5">
+        <aside className="space-y-3">
+          <section className="rounded-xl border border-cyan-200 bg-cyan-50/70 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-cyan-900">
               <Brain size={17} />
               为什么这样安排
             </div>
-            <p className="mt-3 text-sm leading-6 text-cyan-950">
+            <p className="mt-2 text-xs leading-5 text-cyan-950">
               你最近在资源分配图上连续出错。银行家算法直接依赖这个知识点，因此被提前到今天。
             </p>
             <Link
               href="/path"
-              className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-cyan-800"
+              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-cyan-800"
             >
               查看路径变化 <ArrowRight size={13} />
             </Link>
@@ -122,13 +119,13 @@ export function TodayLearningDashboard() {
           {!demo.diagnosticCompleted ? (
             <Link
               href="/diagnostic"
-              className="flex items-center justify-between rounded-2xl border border-violet-200 bg-white p-4 text-sm font-semibold text-violet-700 shadow-sm"
+              className="flex items-center justify-between rounded-xl border border-violet-200 bg-white p-3 text-xs font-semibold text-violet-700"
             >
               完成自适应诊断
               <ArrowRight size={16} />
             </Link>
           ) : (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
               诊断已完成：系统已定位当前薄弱点。
             </div>
           )}
@@ -158,7 +155,7 @@ function TaskCard({
   const active = status === "active";
   return (
     <article
-      className={`rounded-2xl border bg-white p-5 ${
+      className={`rounded-xl border bg-white px-4 py-3.5 ${
         active
           ? "border-blue-400 shadow-[0_12px_30px_rgba(37,99,235,0.10)] ring-1 ring-blue-100"
           : "border-slate-200"
@@ -166,7 +163,7 @@ function TaskCard({
     >
       <div className="flex gap-4">
         <div
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
             status === "completed"
               ? "bg-emerald-100 text-emerald-700"
               : active
@@ -181,11 +178,11 @@ function TaskCard({
             <span className="text-xs font-semibold text-blue-600">{label}</span>
             <span className="text-xs text-slate-400">{detail}</span>
           </div>
-          <h2 className="mt-2 text-xl font-semibold">{title}</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">{reason}</p>
+          <h2 className="mt-1 text-base font-semibold">{title}</h2>
+          <p className="mt-1 text-xs leading-5 text-slate-500">{reason}</p>
           <Link
             href={href}
-            className={`mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ${
+            className={`mt-3 inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold ${
               active
                 ? "bg-blue-600 text-white hover:bg-blue-700"
                 : "border border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -210,9 +207,9 @@ function Metric({
   label: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
       <Icon size={17} className="text-blue-600" />
-      <div className="mt-3 text-xl font-bold">{value}</div>
+      <div className="mt-2 text-lg font-bold">{value}</div>
       <div className="mt-1 text-xs text-slate-500">{label}</div>
     </div>
   );
